@@ -1,210 +1,153 @@
 # deepCab
 
-> **GCP migration note (2026-06-07):** Live GCP project `deepcab-dev` was cold-deleted; deepCab now deploys on demand to **`garassino-ml`** (region **`europe-west1`**) in show-and-destroy mode. Images live permanently on `ghcr.io/juan-garassino/deepcab-{api,website}`. Terraform state lives at `gs://garassino-op-tf-state/deepcab/`. Refs to `deepcab-dev` / `us-central1` elsewhere in this README and `docs/` describe **pre-migration state** — canonical config in workspace root `CLAUDE.md` § "GCP architecture".
+NYC taxi-fare prediction used as a learning hub for MLOps. The repo covers model training, a FastAPI service, an OpenAI tool-calling agent, orchestration and a Docker Compose observability stack in one package (`deepCab/`).
 
-NYC taxi-fare MLOps **learning hub**. One repo demonstrating, end-to-end:
+> **GCP migration note (2026-06-07):** the GCP project `deepcab-dev` was deleted. The project now deploys on demand to `garassino-ml` (region `europe-west1`). Images are on `ghcr.io/juan-garassino/deepcab-{api,website}`. References to `deepcab-dev` or `us-central1` in `docs/` describe the state before the migration.
 
-- 6 model backends behind one sklearn-compatible interface (TF MLP · Torch MLP · XGBoost · LightGBM · CatBoost · FT-Transformer)
-- Pydantic schemas as the **single source of truth** for FastAPI bodies, OpenAI agent tool params, Hydra structured configs, and MLflow param logs
-- Modern data stack: Polars + DuckDB + Hive-partitioned Parquet + Pandera + content-hash SQLite lineage
-- Hydra configs · Optuna HPO · time-series CV · Adaptive Conformal Inference · ONNX serving with INT8 quant · SHAP explainability
-- FastAPI: routers, DI, middleware, BG tasks, SSE, X-API-Key gate
-- Hand-rolled OpenAI tool-calling agent: planner + executor split, MLflow-run memory, budget-capped self-improve loop, append-only JSONL trace
-- Prefect 3 nightly retrain flow · MLflow 2.x with `@champion` / `@challenger` aliases · auto-emit MODEL_CARD.md per run
-- Compose: core / obs / gpu / secrets · GitHub Actions CI + train-smoke matrix · OTel + Prometheus + Grafana provisioned
+## What is in it
 
-## Quickstart
+| Area | What it does | Code |
+|---|---|---|
+| Models | 6 backends behind one sklearn-style interface: TF MLP, Torch MLP, XGBoost, LightGBM, CatBoost, FT-Transformer | `deepCab/models/` |
+| Config | Pydantic schemas shared by FastAPI bodies, agent tool parameters, Hydra configs and MLflow params | `deepCab/schemas/` |
+| Data | Polars + DuckDB, Hive-partitioned Parquet, Pandera validation, SQLite lineage | `deepCab/data/` |
+| Training | Hydra entry point, Optuna HPO, time-series CV, conformal prediction intervals (ACI) | `deepCab/training/`, `deepCab/models/conformal.py` |
+| Serving | FastAPI (REST, SSE, GraphQL), optional gRPC, ONNX runtime with INT8 quantization | `deepCab/api/`, `deepCab/serving/`, `deepCab/grpc/` |
+| Explainability | SHAP attributions aggregated to 5 feature groups | `deepCab/explain/` |
+| Agent | Planner/executor over 9 tools, budget cap, JSONL trace | `deepCab/agent/` |
+| Orchestration | Prefect 3 retrain and simulation flows, MLflow aliases (`champion`/`challenger`), generated `MODEL_CARD.md` | `deepCab/flow_v2/`, `deepCab/registry/` |
+| Infra | Compose stacks (core, observability, GPU), Cloud Run/GKE deploy workflows, CI | `infra/`, `.github/workflows/` |
+
+## Quickstart (CPU)
+
+Needs Python 3.10 or 3.11 and [uv](https://docs.astral.sh/uv/). The commands below were run end to end on Linux/CPU while preparing this README.
 
 ```bash
-make bootstrap         # uv sync + seed secrets + (optional) CSV→Parquet migrate
-make run_train         # python -m deepCab.training.train backend=tf_mlp data=1k
-make run_api           # API serves /predict immediately — autoloader rehydrates STATE from runs/LATEST
-# silicon Macs: run `make actions_reinstall_silicon` before `make bootstrap` for tensorflow-macos wheels
+uv sync --extra dev
+
+# Data: 1k training rows from the public `datascience-mlops` bucket used by the Makefile, 10k validation rows shipped in this repo
+mkdir -p ~/.lewagon/mlops/data/raw
+curl -sSo ~/.lewagon/mlops/data/raw/train_1k.csv \
+  https://storage.googleapis.com/datascience-mlops/taxi-fare-ny/train_1k.csv
+uv run python -m deepCab.data.migrate --size 1k  --split train
+uv run python -m deepCab.data.migrate --size 10k --split val --src deepCab/data
+
+# Train (about 15 s) and serve
+uv run python -m deepCab.training.train backend=xgb data=1k data.validation_size=10k
+uv run uvicorn deepCab.api.app:app --port 8000
 ```
 
-Full stack via compose (files under `infra/compose/`):
+The training run logs `val_mae` (2.46 for this command in a CPU sandbox run, seed 42) and saves the model under `~/.lewagon/mlops/training_outputs/runs/`. On startup the API reloads the last run from there, so `/readyz` reports `model_loaded: true`.
 
 ```bash
-make docker_up                # core (traefik + api + mlflow + postgres + minio + redis + prefect)
-make docker_obs_up            # core + observability (+ otel + jaeger + prom + alertmanager + grafana + loki + promtail)
-make docker_dev_up            # core + obs + dev extras (ngrok, pgadmin)
-# or raw:
-docker compose -f infra/compose/docker-compose.yml up -d
-docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.obs.yml up -d
-```
-
-### Full obs stack with Slack alerts
-
-First time only — set up local DNS + TLS so Traefik can route `*.deepcab.localhost`:
-
-```bash
-make hosts    # adds /etc/hosts entries (sudo)
-make mkcert   # writes mkcert-issued cert into infra/secrets/
-echo "https://hooks.slack.com/services/T0/B0/YOUR-WEBHOOK" > infra/secrets/slack_webhook_url
-make docker_obs_up
-```
-
-Then hit `https://grafana.deepcab.localhost` (admin/admin) — Prometheus + Loki + Jaeger
-datasources are auto-provisioned. Alertmanager posts to `#deepcab-ops` on rule
-fires; the same Slack webhook receives `notify_alias_change` and `notify_flow_event`
-messages from the in-process helper (`deepCab/obs/slack.py`).
-
-## API endpoints
-
-`http://localhost:8000/docs` for the live OpenAPI spec.
-
-| Endpoint                | Auth      | Notes                                                                       |
-|-------------------------|-----------|-----------------------------------------------------------------------------|
-| `GET  /`                | open      | Service banner                                                              |
-| `GET  /version`         | open      | Package version                                                             |
-| `GET  /healthz`         | open      | Liveness                                                                    |
-| `GET  /readyz`          | open      | Reports `model_loaded` + `backend_kind`                                      |
-| `GET  /metrics`         | open      | Prometheus text format                                                       |
-| `POST /predict`         | open      | Single row → fare + ACI interval (when calibrated)                          |
-| `POST /predict/batch`   | open      | Batched                                                                      |
-| `POST /predict/stream`  | open      | SSE per-row stream                                                           |
-| `POST /explain`         | open      | SHAP attribution aggregated to 5 user-meaningful groups                     |
-| `GET  /explain/summary` | open      | Cached global mean(|SHAP|) per group                                        |
-| `POST /train`           | X-API-Key | BackgroundTask; returns `task_id`                                           |
-| `GET  /train/{task_id}` | open      | Status (pending/running/succeeded/failed) + run_id                          |
-| `POST /agent`           | X-API-Key | One-shot agent turn (SSE)                                                   |
-| `POST /agent/improve`   | X-API-Key | Self-improve loop with `BudgetCap` (SSE)                                    |
-
-### curl examples
-
-```bash
-KEY=$(cat infra/secrets/deepcab_api_key)
 ROW='{"row":{"pickup_datetime":"2014-01-15T05:00:00","pickup_longitude":-73.97,"pickup_latitude":40.78,"dropoff_longitude":-73.99,"dropoff_latitude":40.74,"passenger_count":2}}'
-
-# predict (after make run_train)
-curl -X POST http://localhost:8000/predict -H 'Content-Type: application/json' -d "$ROW"
-
-# explain
-curl -X POST http://localhost:8000/explain -H 'Content-Type: application/json' \
-  -d "${ROW%\}}, \"mode\":\"per_row\"}"
-
-# train with a different backend
-curl -X POST http://localhost:8000/train -H "X-API-Key: $KEY" -H 'Content-Type: application/json' \
-  -d '{"config":{"backend":{"kind":"lgbm","n_estimators":200},"data":{"size":"1k","validation_size":"1k"},"seed":42}}'
+curl -X POST localhost:8000/predict -H 'Content-Type: application/json' -d "$ROW"
+# {"fare":13.77,"interval_lower":8.62,"interval_upper":18.92,"backend_kind":"xgb"}
 ```
+
+Interactive docs are at `http://localhost:8000/docs`.
+
+Why validation uses a different size than training: `deepCab.data.migrate` writes `train` and `val` of the same size into the same Parquet partition files, so the second call overwrites the first (see "Known issues"). Using two sizes avoids it.
+
+## API
+
+| Endpoint | Auth | Notes |
+|---|---|---|
+| `GET /`, `/version`, `/healthz`, `/readyz`, `/metrics` | none | `/readyz` reports `model_loaded` and `backend_kind` |
+| `POST /predict`, `/predict/batch`, `/predict/stream` | none | Fare plus conformal interval when calibrated. **Without a loaded model these return a distance-based stub fare with `backend_kind: "random-stub"`** |
+| `POST /explain`, `GET /explain/summary` | none | SHAP by group; 503 when no model is loaded, 409 when the model has no background sample |
+| `POST /train`, `GET /train/{task_id}` | `X-API-Key` | Background training; poll the task id |
+| `POST /agent`, `POST /agent/improve` | `X-API-Key` | SSE; needs an OpenAI key |
+| `/graphql` | `X-API-Key` | `predict`, `listRuns`, `version`, `train` mutation |
+
+The key is checked against `DEEPCAB_API_KEY` (falls back to `OPENAI_API_KEY`). With neither set the gated endpoints are open, which is the development default.
+
+Train a different backend through the API (this call was run; the `lgbm` model then served `/predict` and `/explain`):
+
+```bash
+curl -X POST localhost:8000/train -H 'Content-Type: application/json' \
+  -d '{"config":{"backend":{"kind":"lgbm","n_estimators":200},"data":{"size":"1k","validation_size":"10k"},"seed":42}}'
+# {"task_id":"..."}   then: curl localhost:8000/train/<task_id>
+```
+
+Add `-H "X-API-Key: $KEY"` when a key is configured.
+
+## Training options
+
+```bash
+# Hydra overrides: any field of the backend config
+uv run python -m deepCab.training.train backend=lgbm backend.num_leaves=63 backend.learning_rate=0.03
+# other dataset sizes
+uv run python -m deepCab.training.train backend=xgb data.size=10k data.validation_size=10k seed=7
+```
+
+Backends: `tf_mlp` (default), `torch_mlp`, `xgb`, `lgbm`, `catboost`, `ft_transformer`. Only `data/1k.yaml` exists as a Hydra data preset, so other sizes are set with `data.size` and `data.validation_size`. A Typer CLI wraps the same entry points: `uv run deepcab --help`.
 
 ## Agent
 
+Not run in this README pass because it needs an OpenAI key.
+
 ```bash
-# REPL — needs OPENAI_API_KEY in .env.dev or infra/secrets/openai_api_key
-python -m deepCab.agent.cli
+# key in .env.dev (OPENAI_API_KEY) or infra/secrets/openai_api_key
+uv run python -m deepCab.agent.cli
 > /improve reduce val_mae below 3.0
 ```
 
-Or via HTTP:
+Tools: `preprocess`, `train`, `evaluate`, `predict`, `explain`, `tune`, `list_runs`, `compare_runs`, `propose_next_experiment`. Each tool's Pydantic input model is also its OpenAI schema (`deepCab/agent/tools.py`). `POST /agent/improve` takes a required budget (`max_iters`, `max_tool_calls`, `max_usd`).
+
+## Orchestration
 
 ```bash
-curl -X POST http://localhost:8000/agent/improve -H "X-API-Key: $KEY" -H 'Content-Type: application/json' -N \
-  -d '{"goal":"reduce val_mae","budget":{"max_iters":3,"max_tool_calls":20,"max_usd":1.0}}'
+make run_flow     # one retrain in-process (Prefect 3); not run in this pass
+make flow_serve   # nightly schedule
 ```
 
-Available tools: `preprocess · train · evaluate · predict · explain · tune · list_runs · compare_runs · propose_next_experiment`. Each is a Pydantic-validated function whose schema doubles as a FastAPI body — same source of truth.
+## Full stack with Docker Compose
 
-## Hydra training
+Not run in this README pass (no Docker in the sandbox). Files are under `infra/compose/`; see `infra/README.md` for the one-time secrets and TLS setup.
 
 ```bash
-python -m deepCab.training.train backend=tf_mlp data=1k
-python -m deepCab.training.train backend=xgb data=10k seed=7
-# override any backend field
-python -m deepCab.training.train backend=lgbm backend.num_leaves=63 backend.learning_rate=0.03
+make docker_up        # traefik, api, mlflow, postgres, minio, redis, prefect
+make docker_obs_up    # + otel, jaeger, prometheus, alertmanager, grafana, loki, promtail
+make docker_gpu_up    # GPU override; needs nvidia-container-toolkit
 ```
 
-## Prefect flow (scheduled retrain)
+Grafana provisions three dashboards (API, Agent, Training). Alert rules are in `infra/compose/conf/prometheus-rules.yml`. Slack alerts use `infra/secrets/slack_webhook_url`.
 
-```bash
-make run_flow       # one-shot in-process
-make flow_serve     # serves the nightly cron schedule
-# Prefect UI: http://localhost:4200
-```
+## Deploy
 
-## Observability
-
-| UI            | URL (Traefik)                              | Direct (no Traefik)     | Login           |
-|---------------|--------------------------------------------|-------------------------|-----------------|
-| Traefik       | http://localhost:8080                      | http://localhost:8080   | — (dev)         |
-| MLflow        | https://mlflow.deepcab.localhost           | —                       | —               |
-| Prefect       | https://prefect.deepcab.localhost          | —                       | —               |
-| Jaeger        | https://jaeger.deepcab.localhost           | http://localhost:16686  | —               |
-| Grafana       | https://grafana.deepcab.localhost          | http://localhost:3000   | admin / admin   |
-| Prometheus    | (no Traefik label)                         | http://localhost:9090   | —               |
-| Alertmanager  | https://alertmanager.deepcab.localhost     | —                       | —               |
-| MinIO Console | https://minio.deepcab.localhost            | http://localhost:9001   | minio / (file)  |
-| pgAdmin (dev) | https://pgadmin.deepcab.localhost          | —                       | (file)          |
-
-Grafana auto-provisions three dashboards: **deepCab — API** (latency p50/p95/p99, error rate), **deepCab — Agent** (tool calls, tokens, USD), **deepCab — Training** (runs, epoch duration). Promtail ships every container's stdout/stderr into Loki — visible under Grafana → Explore → Loki.
-
-Alert rules in `infra/compose/conf/prometheus-rules.yml`: `HighErrorRate` (5xx > 5%), `ApiDown` (no scrape 2m), `LatencyP99High` (p99 > 1s for 10m). Alertmanager fans them out to Slack via `infra/secrets/slack_webhook_url`.
-
-## GPU
-
-```bash
-make docker_gpu_up
-# or raw:
-docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.gpu.yml up -d --build api prefect-agent
-# requires nvidia-container-toolkit on the host
-```
-
-## Deploy to GCP Cloud Run
-
-Service shape is provisioned by Terraform in the sibling `002-deepCab-platform/` repo; this workflow only does image-only updates.
-
-1. One-time WIF bootstrap: see `../002-deepCab-platform/terraform/modules/wif/` and `../002-deepCab-platform/docs/RUNBOOK.md`. (The legacy `make wif_bootstrap` + `infra/gcp/workload-identity/README.md` path is deprecated as of 2026-06-04.)
-2. Set GitHub repo variables + secret: `GCP_PROJECT`, `GCP_PROJECT_NUMBER`, `GCP_REGION`, `GCP_WIF_PROVIDER`, `GCP_DEPLOYER_SA`, `MLFLOW_URL` (vars); `SLACK_WEBHOOK_URL` (secret). No long-lived GCP JSON keys — OIDC only.
-3. Push a tag: `git tag v0.1.0 && git push --tags`. The `deploy-cloud-run.yml` workflow builds + pushes the image to Artifact Registry, then runs `gcloud run services update deepcab-api --image=...` against the service Terraform provisioned.
-4. Watch the Slack channel `#deepcab-ops` for `[ci] deploy → Cloud Run ✓`.
-
-GKE deploys are dispatch-only (avoids standing cluster cost):
-
-```bash
-gh workflow run deploy-gke.yml -f tag=v0.1.0 -f cluster=deepcab-prod -f cluster_region=us-central1
-```
-
-## Cloud training trigger
-
-The default cloud training path uses Cloud Scheduler firing a Cloud Run Job at 02:00 UTC daily. See `infra/gcp/cloud-run-jobs/README.md` for setup. Alternative Prefect Cloud path documented in the same README.
+Cloud Run, GKE and Cloud Run Job workflows are in `.github/workflows/`; setup notes are in `infra/gcp/` and the sibling `002-deepCab-platform` repo. They use OIDC (no long-lived keys). GKE deploys are dispatch-only.
 
 ## Tests
 
 ```bash
-make actions_reinstall        # uv sync --extra dev
-uv run pytest tests/ -q       # ~100 tests, ~13 skipped (backends/onnx/openai gated)
+uv run pytest tests/ -q
+uv run ruff format --check . && uv run ruff check .
 ```
 
-## How to extend
+Result of this pass (CPU sandbox, `uv sync --extra dev`): 230 passed, 7 skipped, 0 failed. The skips need optional packages that are not installed by default (`onnxruntime`, `onnxmltools`) or fail to import `google.cloud.bigquery` (`pkg_resources` missing in this environment). The CI workflow is `.github/workflows/ci.yml`.
 
-- **New backend**: subclass `AbstractEstimator` in `deepCab/models/<name>.py`, add a `*Config` to `deepCab/schemas/config.py` (`kind: Literal["..."]`), register in `deepCab/models/_kinds.py::BACKENDS`. ONNX export goes in `deepCab/models/onnx_export.py`. One line per backend everywhere.
-- **New agent tool**: add `(InputModel, fn, "description")` to `deepCab/agent/tools.py::_TOOLS`. The OpenAI schema + FastAPI body materialize automatically.
-- **New endpoint**: drop a router under `deepCab/api/routers/` and include it in `deepCab/api/app.py::create_app`.
+The tests read and write `~/.lewagon/mlops/training_outputs`. If a model from an earlier training run is saved there, two tests in `tests/api/test_routers.py` that expect "no model loaded" fail; run them with `REGISTRY_LOCAL_PATH=$(mktemp -d)` to isolate.
 
-## Architecture
+## Extending
 
-See `/Users/juan-garassino/Code/005-products/006-deep-projects/001-deepCab/CLAUDE.md` for the per-module tree and design decisions per phase.
+- **Backend**: subclass `AbstractEstimator` in `deepCab/models/`, add a `*Config` with `kind: Literal[...]` to `deepCab/schemas/config.py` (and `BACKEND_CONFIGS`), register it in `deepCab/models/_kinds.py::BACKENDS`. ONNX export goes in `deepCab/models/onnx_export.py`.
+- **Agent tool**: add `(InputModel, fn, "description")` to `_TOOLS` in `deepCab/agent/tools.py`.
+- **Endpoint**: add a router under `deepCab/api/routers/` and include it in `deepCab/api/app.py::create_app`.
 
-## Audit
+## Known issues
 
-See `infra/AUDIT.md` for the latest simplification pass — LOC delta, complexity
-delta, dead code triaged, fixtures consolidated. Raw analyzer output lives in
-`infra/audit/` (radon before/after, vulture dead-code, pylint duplicate-code,
-pydeps cycles or skip marker). Re-run with:
+These are documented, not fixed, in this pass:
 
-```
-uv sync --extra dev
-uv run radon cc -s -a deepCab/
-uv run vulture deepCab/ tests/ --min-confidence 70
-```
+- `deepCab.data.migrate` overwrites `part-0.parquet` when `train` and `val` of the same size are migrated one after the other, so the first split is lost (`make bootstrap` runs exactly that sequence). Workaround above.
+- `POST /explain` and `GET /explain/summary` raised `ValueError: could not convert string to float` for an XGBoost model with the pinned `shap 0.49.1` and `xgboost 3.2.0`; they worked for LightGBM.
+- Several Makefile targets are stale: `test_api` has no recipe, `default` and `list` mention the old `taxifare` package, `run_train`/`run_api`/`bootstrap` call bare `python`/`uvicorn` (activate `.venv` first or use `uv run`).
 
-## Production deferred
+## More
 
-These are intentionally **not** in the MVP — documented + scoped post-MVP:
+- `notebooks/README.md`: lesson notebooks (00, 02 and 07 are full lessons, the rest are scaffolds).
+- `CONTRIBUTING.md`: setup, test loop and a runbook for common errors.
+- `infra/AUDIT.md`: earlier simplification pass (complexity and dead-code numbers, with raw output in `infra/audit/`).
+- `docs/superpowers/`: design plans per sub-project.
 
-- Multi-worker uvicorn (STATE → Redis migration)
-- Drift detection (Evidently / NannyML on `/monitor`)
-- Logged inference table for online-feedback drift
-- Per-user rate-limiting + quotas
-- LLM-driven `propose_next_experiment`
-- Tune-across-backends
+Deferred, as listed in the previous README: multi-worker serving with shared state, drift detection, per-user rate limiting, an LLM-driven `propose_next_experiment`.
