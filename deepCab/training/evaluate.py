@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from deepCab.models.base import AbstractEstimator
 from deepCab.obs.log import get_logger
 from deepCab.schemas.config import DataRef
 from deepCab.training.preprocess import preprocess
@@ -22,7 +23,7 @@ class EvalResult:
     n: int
 
 
-def evaluate(estimator, data: DataRef, split: str = "val") -> EvalResult:
+def evaluate(estimator: AbstractEstimator, data: DataRef, split: str = "val") -> EvalResult:
     """Score `estimator` on the given split of `data`."""
     X, y = preprocess(data, split=split)
     pred = np.asarray(estimator.predict(X)).ravel()

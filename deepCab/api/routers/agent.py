@@ -30,7 +30,7 @@ router = APIRouter(tags=["agent"])
 async def agent_turn(
     req: AgentTurnRequest,
     svc: AgentService = Depends(get_agent_service),
-):
+) -> EventSourceResponse:
     """`POST /agent`: run one agent turn and stream events over SSE (503 without an OpenAI key)."""
     try:
         stream = svc.turn(req)
@@ -43,7 +43,7 @@ async def agent_turn(
 async def agent_improve(
     req: AgentImproveRequest,
     svc: AgentService = Depends(get_agent_service),
-):
+) -> EventSourceResponse:
     """`POST /agent/improve`: run the budget-capped self-improve loop over SSE."""
     try:
         stream = svc.improve(req)

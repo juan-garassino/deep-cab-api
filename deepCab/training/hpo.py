@@ -19,19 +19,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic import BaseModel
-
 from deepCab.obs.log import get_logger
 from deepCab.schemas.config import (
+    BACKEND_CONFIGS,
     BackendConfig,
-    CatBoostConfig,
-    FTTransformerConfig,
     HPOConfig,
-    LGBMConfig,
-    TFMLPConfig,
-    TorchMLPConfig,
     TrainConfig,
-    XGBConfig,
 )
 
 log = get_logger(__name__)
@@ -102,14 +95,7 @@ SPACES: dict[str, Callable[[Any], dict]] = {
 }
 
 
-CONFIG_CLASSES: dict[str, type[BaseModel]] = {
-    "tf_mlp": TFMLPConfig,
-    "torch_mlp": TorchMLPConfig,
-    "xgb": XGBConfig,
-    "lgbm": LGBMConfig,
-    "catboost": CatBoostConfig,
-    "ft_transformer": FTTransformerConfig,
-}
+CONFIG_CLASSES = BACKEND_CONFIGS
 
 
 # ---------- study ----------

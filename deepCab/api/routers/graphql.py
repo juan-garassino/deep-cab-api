@@ -109,30 +109,13 @@ class Mutation:
         """Lesson: GraphQL mutations are POST-shaped; we deliberately keep this
         gate-free at the schema level and rely on the FastAPI X-API-Key
         dependency wrapping the whole /graphql route. Same security boundary."""
-        from deepCab.schemas.config import (
-            CatBoostConfig,
-            DataRef,
-            FTTransformerConfig,
-            LGBMConfig,
-            TFMLPConfig,
-            TorchMLPConfig,
-            TrainConfig,
-            XGBConfig,
-        )
+        from deepCab.schemas.config import BACKEND_CONFIGS, DataRef, TrainConfig
         from deepCab.training.train import run as run_train
 
-        cls_map = {
-            "tf_mlp": TFMLPConfig,
-            "torch_mlp": TorchMLPConfig,
-            "xgb": XGBConfig,
-            "lgbm": LGBMConfig,
-            "catboost": CatBoostConfig,
-            "ft_transformer": FTTransformerConfig,
-        }
-        if backend_kind not in cls_map:
+        if backend_kind not in BACKEND_CONFIGS:
             raise ValueError(f"unknown backend_kind={backend_kind!r}")
         cfg = TrainConfig(
-            backend=cls_map[backend_kind](),
+            backend=BACKEND_CONFIGS[backend_kind](),
             data=DataRef(size=dataset_size, validation_size=dataset_size),  # type: ignore[arg-type]
             seed=seed,
         )

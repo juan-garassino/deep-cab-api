@@ -14,12 +14,16 @@ import concurrent.futures
 import json
 import uuid
 from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 from deepCab.agent.budget import Budget, BudgetExhausted
 from deepCab.agent.tools import dispatch, openai_tools
 from deepCab.agent.trace import AgentEvent, AgentTrace
 from deepCab.obs.log import get_logger
 from deepCab.obs.prom import agent_tool_call_total
+
+if TYPE_CHECKING:
+    from openai import OpenAI
 
 log = get_logger(__name__)
 
@@ -47,7 +51,7 @@ def _call_tool_with_timeout(name: str, args: dict, timeout_s: float) -> dict:
 
 
 def run_one_turn(
-    client,
+    client: OpenAI,
     model: str,
     user_message: str,
     budget: Budget,

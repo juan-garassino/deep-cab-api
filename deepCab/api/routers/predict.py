@@ -46,6 +46,6 @@ async def predict_batch(
 async def predict_stream(
     req: BatchPredictRequest,
     svc: PredictionService = Depends(get_prediction_service),
-):
+) -> EventSourceResponse:
     """SSE stream of per-row predictions; closes with an event {count: N}."""
     return EventSourceResponse(svc.predict_stream(req))

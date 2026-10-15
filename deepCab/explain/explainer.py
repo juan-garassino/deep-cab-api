@@ -18,6 +18,7 @@ Two correctness invariants worth knowing:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -40,7 +41,7 @@ class Explanation:
     aggregated: dict[str, float]  # 5-group summary keyed by FEATURE_ORDER
 
 
-def make_explainer(estimator: AbstractEstimator, background: np.ndarray):
+def make_explainer(estimator: AbstractEstimator, background: np.ndarray) -> Any:
     """Pick the right SHAP explainer for this estimator. `background` is a
     representative sample of the training distribution — used by Deep / Gradient
     / Kernel explainers as the reference point."""
