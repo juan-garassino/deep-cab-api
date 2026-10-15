@@ -4,8 +4,7 @@ Architecture: dense + batchnorm + dropout stack with L1/L2 regularization on the
 first hidden layer. Adam optimizer, MSE loss, MAE metric, early stopping on
 val_loss with restore_best_weights.
 
-Phase 3 will add ONNX export here via tf2onnx (opset 17). Phase 7 wires the
-exported model into the ONNX runtime for serving."""
+ONNX export (tf2onnx, opset 17) lives in `deepCab/models/onnx_export.py`."""
 
 from __future__ import annotations
 

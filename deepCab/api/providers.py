@@ -14,8 +14,7 @@ via `deps.get_model_handle` / `deps.get_optional_model_handle` directly over
 `api.state.STATE`. Re-introduce a Protocol here only when a second real
 implementation shows up.
 
-Pattern matches the user's instruction in CLAUDE.md: keep things low-level and
-explicit. The Protocol is `runtime_checkable` so `isinstance(x, Foo)` works in
+The Protocol is `runtime_checkable` so `isinstance(x, Foo)` works in
 tests; the concrete classes hold zero business logic — they're shims around
 `agent/trace.py`."""
 

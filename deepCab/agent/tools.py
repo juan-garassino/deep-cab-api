@@ -199,10 +199,8 @@ def _preprocess(args: PreprocessIn) -> PreprocessOut:
 def _train(args: TrainIn) -> TrainOut:
     from deepCab.training.train import run as run_train
 
-    # P11 fix: train.run() now populates STATE.model with the fitted estimator
-    # + background + ACI. No more double-fit — agent and predict tool see the
-    # same trained weights, which means val_mae reported and /predict outputs
-    # are consistent.
+    # train.run() also populates STATE.model, so `predict`/`evaluate` use the
+    # same fitted weights that produced the reported val_mae (no second fit).
     cfg = TrainConfig(backend=args.backend, data=args.data, seed=args.seed)
     result = run_train(cfg)
 

@@ -1,5 +1,5 @@
 """FastAPI factory. `create_app()` is the single entry point used by:
-    - uvicorn deepCab.api.app:create_app    (Makefile run_api)
+    - uvicorn deepCab.api.app:app           (Makefile run_api)
     - tests/api/* via TestClient
     - docker-compose api service
 

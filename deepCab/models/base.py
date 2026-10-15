@@ -107,5 +107,5 @@ class AbstractEstimator(BaseEstimator, RegressorMixin, ABC):
         """Rebuild a fitted estimator from what `save` wrote at `path`."""
 
     def to_onnx(self, path: Path, sample: np.ndarray) -> Path:
-        """Per-backend ONNX export lands in Phase 3 (deepCab/models/onnx_export.py)."""
+        """Export to ONNX at `path`; replaced at import time by `onnx_export.attach_onnx_method`."""
         raise NotImplementedError(f"ONNX export for {type(self).__name__} arrives in Phase 3")

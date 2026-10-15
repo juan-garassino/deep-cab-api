@@ -63,7 +63,9 @@ class ExplainResponse(BaseModel):
 
     prediction: float
     base_value: float
-    shap_by_feature: dict[str, float]  # aggregated to the 6 user features
+    shap_by_feature: dict[
+        str, float
+    ]  # aggregated to the 5 groups in explain.aggregate.COLUMN_GROUPS
 
 
 class TrainStartRequest(BaseModel):

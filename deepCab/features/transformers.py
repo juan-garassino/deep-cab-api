@@ -5,8 +5,8 @@ pandas-apply (geohash still uses map_elements — pygeohash isn't vectorized).
 Public API surface mirrors the legacy module so the sklearn FunctionTransformer
 wrappers in features/pipeline.py keep working: each function accepts a pandas
 DataFrame, returns a numpy.ndarray. Internally we convert to Polars, run the
-expression, and emit numpy. Phase 3 will replace the wrappers with native Polars
-pipelines and drop the pandas/numpy round-trip.
+expression, and emit numpy. The pandas/numpy round-trip remains until the
+wrappers are replaced with native Polars pipelines.
 
 Gotcha (caught by features/golden.py): polars `dt.weekday()` is 1=Monday, pandas
 `dt.dayofweek` is 0=Monday. We subtract 1 to preserve legacy semantics."""

@@ -1,14 +1,15 @@
-"""FastAPI lifespan: startup loads telemetry + (optional) @champion model from
-MLflow. Shutdown is a no-op.
+"""FastAPI lifespan: initialise telemetry and reload the last trained model at startup.
 
-The autoloader closes the Phase 10 gap: without it, every API restart left
-`/predict` returning 503 until something explicitly trained a model. Now the
-last-promoted @champion alias rehydrates STATE.model at startup; if MLflow
-isn't configured or no @champion exists, we no-op cleanly and the route stays
-503 until the agent's `train` tool or `make run_train` populates STATE."""
+The model is read from the local `runs/LATEST` pointer (see
+`registry.dispatcher`). When MLflow is configured the @champion alias is also
+looked up, but only logged: rehydrating from the MLflow URI is not implemented.
+With no saved run, `STATE.model` stays empty: `/predict` answers with a stub
+fare and `/explain` returns 503 until `POST /train` or `make run_train` fills it.
+Shutdown is a no-op."""
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -99,14 +100,14 @@ def _try_load_champion() -> None:
         except Exception as e:  # noqa: BLE001
             log.info("api.champion.skipped", reason=f"{type(e).__name__}: {e}")
 
-    # Local-disk fallback always runs — it's the practical path.
+    # Always runs: the MLflow branch above does not load a model.
     loaded = _try_load_local_latest()
     if not loaded and not mlflow_ok:
         log.info("api.autoload.skipped", note="no model loaded; /predict will 503 until /train")
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup/shutdown hook: initialise tracing and try to load a model before serving."""
     log.info("api.startup")
     _try_init_otel()
