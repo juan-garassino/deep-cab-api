@@ -22,6 +22,7 @@ async def explain(
     req: ExplainRequest,
     svc: ExplanationService = Depends(get_explanation_service),
 ) -> ExplainResponse:
+    """`POST /explain`: SHAP attribution for one row (409 when the model has no background sample)."""
     try:
         return await svc.explain(req)
     except MissingBackgroundError as e:
@@ -32,6 +33,7 @@ async def explain(
 async def explain_summary(
     svc: ExplanationService = Depends(get_explanation_service),
 ) -> dict:
+    """`GET /explain/summary`: cached global mean(|SHAP|) per feature group."""
     try:
         return await svc.summary()
     except MissingBackgroundError as e:

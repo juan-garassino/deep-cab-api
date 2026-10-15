@@ -45,6 +45,7 @@ def _connect() -> sqlite3.Connection:
 
 
 def write_edge(edge: LineageEdge) -> int:
+    """Insert one edge into the SQLite store and return its row id."""
     with _connect() as conn:
         cur = conn.execute(
             "INSERT INTO lineage_edges (ts, run_id, input_hash, preprocessor_hash, split_hash) "
@@ -61,6 +62,7 @@ def write_edge(edge: LineageEdge) -> int:
 
 
 def query_by_run(run_id: str) -> list[dict]:
+    """Return all edges for `run_id` as dicts, newest first."""
     with _connect() as conn:
         rows = conn.execute(
             "SELECT id, ts, run_id, input_hash, preprocessor_hash, split_hash "

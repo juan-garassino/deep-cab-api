@@ -11,6 +11,7 @@ from deepCab.cli import app
 
 
 def main() -> None:
+    """Run the Typer CLI (same app as the `deepcab` console script)."""
     app()
 
 

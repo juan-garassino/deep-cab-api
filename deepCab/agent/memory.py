@@ -24,6 +24,20 @@ def _client() -> Any | None:
 
 
 def list_runs(top_k: int = 10, metric: str = "val_mae") -> list[MemoryEntry]:
+    """List MLflow runs of the configured experiment, best first.
+
+    Parameters
+    ----------
+    top_k : int
+        Maximum number of runs returned.
+    metric : str
+        Run metric to sort by, ascending (lower is better).
+
+    Returns
+    -------
+    list[MemoryEntry]
+        Empty when MLflow or the experiment is not configured.
+    """
     client = _client()
     if client is None:
         return []
@@ -54,6 +68,20 @@ def list_runs(top_k: int = 10, metric: str = "val_mae") -> list[MemoryEntry]:
 
 
 def compare_runs(run_ids: list[str]) -> dict:
+    """Diff the params and metrics of several MLflow runs.
+
+    Parameters
+    ----------
+    run_ids : list[str]
+        MLflow run ids to fetch.
+
+    Returns
+    -------
+    dict
+        Keys `runs`, `param_diff`, `metric_diff`. `*_diff` only holds keys whose
+        values differ between runs, labelled `run_0`, `run_1`, ... in input order.
+        Empty values when MLflow is not configured.
+    """
     client = _client()
     if client is None:
         return {"runs": [], "param_diff": {}, "metric_diff": {}}

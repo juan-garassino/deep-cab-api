@@ -32,6 +32,8 @@ TREE_KINDS = {"xgb", "lgbm", "catboost"}
 
 @dataclass
 class Explanation:
+    """SHAP result for one row: prediction, base value, raw 65-d values and 5-group sums."""
+
     prediction: float
     base_value: float
     values: np.ndarray  # raw 65-d SHAP for the queried row

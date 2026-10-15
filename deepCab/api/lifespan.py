@@ -107,6 +107,7 @@ def _try_load_champion() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Startup/shutdown hook: initialise tracing and try to load a model before serving."""
     log.info("api.startup")
     _try_init_otel()
     _try_load_champion()

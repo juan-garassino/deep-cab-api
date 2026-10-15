@@ -102,6 +102,8 @@ def _env_overlay(
 
 @dataclass
 class ChunkResult:
+    """Outcome of one simulated chunk: training run, challenger metric and promotion decision."""
+
     chunk_index: int
     where: str
     train_run_id: str | None
@@ -111,6 +113,8 @@ class ChunkResult:
 
 @dataclass
 class SimulateResult:
+    """Aggregate of a simulation: per-chunk results, promotion count and MAE trajectory."""
+
     backend: BackendKind
     chunks: list[ChunkResult] = field(default_factory=list)
     promotions: int = 0
@@ -307,6 +311,7 @@ def promote_task(
     promotion_threshold: float,
     promotion_service: PromotionService | None = None,
 ) -> PromotionResult:
+    """Prefect task: ask `PromotionService` whether the new run should replace the champion."""
     svc = promotion_service or PromotionService()
     return svc.maybe_promote(
         PromotionInputs(
@@ -319,6 +324,7 @@ def promote_task(
 
 @task(name="notify_chunk")
 def notify_chunk_task(chunk: ChunkResult, total_chunks: int) -> None:
+    """Prefect task: post a one-line chunk summary through `obs.notify`."""
     msg = (
         f"chunk {chunk.chunk_index + 1}/{total_chunks} · "
         f"mae={chunk.challenger_metric:.3f} · "

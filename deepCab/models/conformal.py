@@ -30,6 +30,18 @@ from deepCab.models.base import AbstractEstimator
 
 @dataclass
 class ACIRegressor:
+    """Prediction intervals around a fitted `base` estimator.
+
+    Attributes
+    ----------
+    base : AbstractEstimator
+        Point predictor.
+    alpha : float
+        Nominal miscoverage; intervals target 1 - alpha coverage.
+    gamma : float
+        Step size of the online update in `update`.
+    """
+
     base: AbstractEstimator
     alpha: float = 0.1  # nominal miscoverage (1 - alpha = nominal coverage)
     gamma: float = 0.005  # online learning rate

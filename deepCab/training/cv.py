@@ -24,6 +24,8 @@ log = get_logger(__name__)
 
 @dataclass
 class CVResult:
+    """Per-fold MAE with its mean and standard deviation."""
+
     fold_mae: list[float]
     mean_mae: float
     std_mae: float

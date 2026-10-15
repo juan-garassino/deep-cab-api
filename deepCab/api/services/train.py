@@ -66,6 +66,7 @@ class TrainingService:
         req: TrainStartRequest,
         bg: BackgroundTasks,
     ) -> TrainStartResponse:
+        """Register a task and schedule the training run in the background."""
         task_id = uuid.uuid4().hex[:12]
         STATE.upsert_task(TaskRecord(task_id=task_id))
         bg.add_task(self._run_training, task_id, req)
@@ -73,6 +74,13 @@ class TrainingService:
         return TrainStartResponse(task_id=task_id)
 
     async def status(self, task_id: str) -> TrainStatusResponse:
+        """Return the status of a task.
+
+        Raises
+        ------
+        UnknownTaskError
+            If `task_id` was never registered.
+        """
         rec = STATE.tasks.get(task_id)
         if rec is None:
             raise UnknownTaskError(task_id)

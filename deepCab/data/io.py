@@ -11,6 +11,7 @@ from deepCab.schemas.settings import get_settings
 
 
 def parquet_root() -> Path:
+    """Return the Parquet store root from settings, with `~` expanded."""
     return get_settings().data.parquet_path.expanduser()
 
 

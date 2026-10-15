@@ -47,6 +47,8 @@ class PromotionInputs:
 
 @dataclass
 class PromotionResult:
+    """Decision of a champion/challenger comparison, with the metrics and versions involved."""
+
     promoted: bool
     reason: str
     challenger_version: str

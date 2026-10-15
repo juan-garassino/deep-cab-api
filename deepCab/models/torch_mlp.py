@@ -20,6 +20,8 @@ from deepCab.schemas.config import TorchMLPConfig
 
 
 class TorchMLPEstimator(AbstractEstimator):
+    """PyTorch MLP regressor (AdamW, cosine schedule, early stopping when validation data is given)."""
+
     cfg_cls = TorchMLPConfig
 
     def _build(self, input_dim: int):
@@ -134,6 +136,13 @@ class TorchMLPEstimator(AbstractEstimator):
 
     @classmethod
     def load(cls, path: Path) -> TorchMLPEstimator:
+        """Restore from `path` and the `.cfg.json` sidecar written by `save`.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the sidecar is missing.
+        """
         import json
 
         import torch

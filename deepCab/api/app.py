@@ -51,6 +51,7 @@ def _resolve_cors_origins() -> list[str]:
 
 
 def create_app() -> FastAPI:
+    """Build the FastAPI app: middleware, routers, `/metrics` mount and the unhandled-exception handler."""
     app = FastAPI(
         title="deepCab API",
         description="NYC taxi-fare MLOps learning hub",

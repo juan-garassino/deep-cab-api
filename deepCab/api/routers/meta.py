@@ -9,6 +9,7 @@ router = APIRouter(tags=["meta"])
 
 @router.get("/")
 def root() -> dict:
+    """`GET /`: service banner with links to docs, metrics and health."""
     return {
         "service": "deepcab",
         "docs": "/docs",
@@ -19,4 +20,5 @@ def root() -> dict:
 
 @router.get("/version")
 def version() -> dict:
+    """`GET /version`: API version."""
     return {"version": "0.1.0"}

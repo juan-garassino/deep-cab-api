@@ -25,6 +25,8 @@ class FeatureRowInput:
 
 @strawberry.type
 class PredictionType:
+    """GraphQL result of `predict`: fare, optional interval, backend."""
+
     fare: float
     interval_lower: float | None = None
     interval_upper: float | None = None
@@ -33,6 +35,8 @@ class PredictionType:
 
 @strawberry.type
 class RunSummary:
+    """GraphQL view of one MLflow run (`MemoryEntry`)."""
+
     run_id: str
     backend_kind: str
     metric_name: str
@@ -41,12 +45,16 @@ class RunSummary:
 
 @strawberry.type
 class Query:
+    """GraphQL queries: `version`, `predict`, `listRuns`."""
+
     @strawberry.field
     def version(self) -> str:
+        """Return the API version string."""
         return "0.1.0"
 
     @strawberry.field
     def predict(self, row: FeatureRowInput) -> PredictionType:
+        """Predict one fare with the loaded model; adds an interval when an ACI wrapper exists."""
         if STATE.model is None:
             raise Exception("no model loaded — POST /train or call mutation train first")
         feature_row = row.to_pydantic()
@@ -69,6 +77,7 @@ class Query:
 
     @strawberry.field
     def list_runs(self, top_k: int = 10, metric: str = "val_mae") -> list[RunSummary]:
+        """Return the top MLflow runs sorted ascending by `metric`."""
         from deepCab.agent.memory import list_runs as mem_list_runs
 
         return [
@@ -84,6 +93,8 @@ class Query:
 
 @strawberry.type
 class TrainResultType:
+    """GraphQL result of the `train` mutation."""
+
     run_id: str | None
     backend_kind: str
     val_mae: float
@@ -91,6 +102,8 @@ class TrainResultType:
 
 @strawberry.type
 class Mutation:
+    """GraphQL mutations: `train`."""
+
     @strawberry.mutation
     def train(self, backend_kind: str, dataset_size: str = "1k", seed: int = 42) -> TrainResultType:
         """Lesson: GraphQL mutations are POST-shaped; we deliberately keep this

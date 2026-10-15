@@ -19,6 +19,8 @@ class ToolCall(BaseModel):
 
 
 class ToolResult(BaseModel):
+    """Outcome of a tool call: `ok` with `result`, or an `error`."""
+
     model_config = ConfigDict(extra="forbid")
 
     request_id: str
@@ -30,6 +32,8 @@ class ToolResult(BaseModel):
 
 
 class AgentMessage(BaseModel):
+    """One chat message exchanged with the model."""
+
     model_config = ConfigDict(extra="forbid")
 
     role: MessageRole
@@ -39,6 +43,8 @@ class AgentMessage(BaseModel):
 
 
 class Plan(BaseModel):
+    """A goal and the ordered tool calls planned for it."""
+
     model_config = ConfigDict(extra="forbid")
 
     goal: str
@@ -56,6 +62,8 @@ class BudgetCap(BaseModel):
 
 
 class ImproveConfig(BaseModel):
+    """Settings of the self-improve loop: goal, budget, plateau and circuit-breaker limits."""
+
     model_config = ConfigDict(extra="forbid")
 
     goal: str = "reduce mae"

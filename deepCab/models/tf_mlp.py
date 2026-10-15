@@ -19,6 +19,8 @@ from deepCab.schemas.config import TFMLPConfig
 
 
 class TFMLPEstimator(AbstractEstimator):
+    """Keras MLP regressor; uses the passed validation data, else a 30% validation split."""
+
     cfg_cls = TFMLPConfig
 
     def _build(self, input_dim: int):
@@ -83,6 +85,7 @@ class TFMLPEstimator(AbstractEstimator):
         return self.model_.predict(X, verbose=0).ravel()
 
     def save(self, path: Path) -> None:
+        """Write `model.keras` inside the directory `path`."""
         # Keras 3 requires an explicit `.keras` (or `.h5`) extension — the old
         # SavedModel-directory form (model.save(dir)) now raises. Write the
         # native-format file inside the run dir the dispatcher hands us.
@@ -91,6 +94,7 @@ class TFMLPEstimator(AbstractEstimator):
 
     @classmethod
     def load(cls, path: Path) -> TFMLPEstimator:
+        """Load `model.keras` from the directory `path` into a default-config estimator."""
         from tensorflow.keras.models import load_model
 
         # Reconstruct an estimator with defaults; weights come from disk.

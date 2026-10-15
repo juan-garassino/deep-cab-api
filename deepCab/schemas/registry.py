@@ -8,6 +8,8 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ModelArtifact(BaseModel):
+    """A registered model version and its aliases."""
+
     model_config = ConfigDict(extra="forbid")
 
     name: str
@@ -18,6 +20,8 @@ class ModelArtifact(BaseModel):
 
 
 class RunMetadata(BaseModel):
+    """Summary of one tracked training run."""
+
     model_config = ConfigDict(extra="forbid")
 
     run_id: str

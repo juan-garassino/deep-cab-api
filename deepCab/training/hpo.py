@@ -117,6 +117,8 @@ CONFIG_CLASSES: dict[str, type[BaseModel]] = {
 
 @dataclass
 class HPOResult:
+    """Best value and params of an Optuna study, with the matching backend config."""
+
     best_value: float
     best_params: dict
     best_backend_cfg: BackendConfig

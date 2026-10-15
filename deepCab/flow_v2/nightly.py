@@ -141,6 +141,7 @@ def run_nightly(period_days: int = 14, *, client=None) -> int:
 
 
 def main() -> None:
+    """Command-line entry point; exits with the status of `run_nightly`."""
     parser = argparse.ArgumentParser(description="deepCab nightly sliding-window bench")
     parser.add_argument("--period-days", type=int, default=14, help="chunk width in days")
     args = parser.parse_args()

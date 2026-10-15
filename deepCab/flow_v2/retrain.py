@@ -36,6 +36,8 @@ log = get_logger(__name__)
 
 @dataclass
 class RetrainResult:
+    """Outcome of one `retrain_flow` run."""
+
     backend_kind: str
     run_id: str | None
     val_mae: float
@@ -56,6 +58,7 @@ def preprocess_task(cfg: TrainConfig) -> dict:
 
 @task(name="train", retries=0)  # training is expensive — retry should be deliberate
 def train_task(cfg: TrainConfig) -> dict:
+    """Prefect task: train once via `training.train.run` and return run metadata as a dict."""
     from deepCab.training.train import run as run_train
 
     result = run_train(cfg)
@@ -106,6 +109,7 @@ def _evaluate(cfg: TrainConfig, train_result: dict) -> dict:
 
 @flow(name="deepcab-retrain", log_prints=False)
 def retrain_flow(cfg: TrainConfig | None = None) -> RetrainResult:
+    """Prefect flow: preprocess summary, train, evaluate, notify. Uses a default config when `cfg` is None."""
     if cfg is None:
         cfg = _default_cfg()
     run_id = f"flow-{uuid.uuid4().hex[:8]}"

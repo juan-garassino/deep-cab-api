@@ -21,6 +21,8 @@ from deepCab.schemas.settings import get_settings
 
 @dataclass
 class AgentEvent:
+    """One trace record; `kind` is plan, tool_call, tool_result, llm, budget, error, done or note."""
+
     ts: float = field(default_factory=time.time)
     loop_run_id: str = ""
     iter: int = 0
@@ -41,6 +43,7 @@ class AgentTrace:
         self.path = self.dir / f"agent-{self.loop_run_id}.jsonl"
 
     def append(self, ev: AgentEvent) -> None:
+        """Write `ev` as one JSON line, filling in `loop_run_id` if empty."""
         ev.loop_run_id = ev.loop_run_id or self.loop_run_id
         with self.path.open("a") as fh:
             fh.write(json.dumps(asdict(ev), default=str) + "\n")

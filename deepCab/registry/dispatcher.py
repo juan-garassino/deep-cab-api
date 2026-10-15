@@ -39,12 +39,14 @@ log = get_logger(__name__)
 
 
 def runs_root() -> Path:
+    """Return `<registry.local_path>/runs`, creating it if needed."""
     root = get_settings().registry.local_path.expanduser() / "runs"
     root.mkdir(parents=True, exist_ok=True)
     return root
 
 
 def latest_pointer() -> Path:
+    """Return the path of the `LATEST` file that names the most recent run."""
     return runs_root() / "LATEST"
 
 
@@ -148,6 +150,7 @@ def load_state_from_disk(run_id: str) -> ModelHandle:
 
 
 def read_latest_run_id() -> str | None:
+    """Return the run id stored in `LATEST`, or None if absent or empty."""
     p = latest_pointer()
     if not p.exists():
         return None

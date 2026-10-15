@@ -29,7 +29,8 @@ class TraceProvider(Protocol):
     """Persists agent trace events. Implementations differ in storage backend;
     the contract is one append-only stream identified by `loop_run_id`."""
 
-    def new_trace(self, loop_run_id: str | None = None) -> Any: ...
+    def new_trace(self, loop_run_id: str | None = None) -> Any:
+        """Return a trace object with `loop_run_id` and `append(event)`."""
 
 
 class JsonlTraceProvider:
@@ -39,6 +40,7 @@ class JsonlTraceProvider:
     and file; this provider just hands one back per call."""
 
     def new_trace(self, loop_run_id: str | None = None) -> Any:
+        """Return an `AgentTrace` writing to `agent-<loop_run_id>.jsonl`."""
         from deepCab.agent.trace import AgentTrace
 
         return AgentTrace(loop_run_id=loop_run_id)
@@ -52,6 +54,8 @@ class NullTraceProvider:
         self.last: Any = None
 
     def new_trace(self, loop_run_id: str | None = None) -> Any:
+        """Return an in-memory trace and remember it as `self.last`."""
+
         class _InMemoryTrace:
             def __init__(self, lid: str | None) -> None:
                 import uuid
