@@ -13,12 +13,15 @@ from typing import Any
 
 @dataclass
 class LineageEdge:
+    """Content hashes tying a run's inputs, preprocessor and split to an MLflow `run_id`."""
+
     input_hash: str
     preprocessor_hash: str
     split_hash: str
     run_id: str | None = None
 
     def manifest(self) -> dict[str, Any]:
+        """Return the edge as a plain dict."""
         return {
             "input_hash": self.input_hash,
             "preprocessor_hash": self.preprocessor_hash,

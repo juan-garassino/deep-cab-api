@@ -68,6 +68,7 @@ GOLDEN_ROWS: list[dict] = [
 
 
 def as_dataframe() -> pd.DataFrame:
+    """Return the golden rows as a DataFrame."""
     return pd.DataFrame(GOLDEN_ROWS)
 
 
@@ -79,6 +80,13 @@ def as_dataframe() -> pd.DataFrame:
 
 
 def reference_time_features(X: pd.DataFrame) -> np.ndarray:
+    """Reference time encoding in America/New_York.
+
+    Returns
+    -------
+    numpy.ndarray
+        Shape (n, 5): hour sin, hour cos, weekday, month, year.
+    """
     dt = pd.to_datetime(X["pickup_datetime"], utc=True).dt.tz_convert("America/New_York").dt
     hour = dt.hour
     return np.stack(
@@ -94,6 +102,7 @@ def reference_time_features(X: pd.DataFrame) -> np.ndarray:
 
 
 def reference_lonlat_features(X: pd.DataFrame) -> pd.DataFrame:
+    """Return a DataFrame with `haversine_km` and `manhattan_km` per row."""
     lat1 = np.radians(X["pickup_latitude"])
     lon1 = np.radians(X["pickup_longitude"])
     lat2 = np.radians(X["dropoff_latitude"])
@@ -107,6 +116,7 @@ def reference_lonlat_features(X: pd.DataFrame) -> pd.DataFrame:
 
 
 def reference_geohash(X: pd.DataFrame, precision: int = 5) -> pd.DataFrame:
+    """Return a DataFrame with `geohash_pickup` and `geohash_dropoff` strings of the given precision."""
     return pd.DataFrame(
         {
             "geohash_pickup": [

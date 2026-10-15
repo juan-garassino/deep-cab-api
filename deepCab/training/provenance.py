@@ -24,6 +24,8 @@ log = get_logger(__name__)
 
 @dataclass
 class Provenance:
+    """Environment and config fingerprint written next to a run (git SHA, config hash, versions)."""
+
     run_id: str | None
     git_sha: str | None
     config_hash: str
@@ -44,6 +46,7 @@ def emit_provenance(
     metrics: dict[str, float],
     out_dir: Path | None = None,
 ) -> Path:
+    """Write `provenance.json` to `out_dir` (default `runs/<run_id>`) and return its path."""
     out_dir = out_dir or Path("runs") / (run_id or "local")
     out_dir.mkdir(parents=True, exist_ok=True)
     prov = Provenance(

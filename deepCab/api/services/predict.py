@@ -110,6 +110,7 @@ class PredictionService:
         return PredictResponse(fare=_random_fare(row), backend_kind=_RANDOM_BACKEND)
 
     async def predict_one(self, req: PredictRequest) -> PredictResponse:
+        """Predict one row; falls back to the stub fare when no model is loaded."""
         if self.model is None:
             resp = self._stub_response(req.row)
         else:
@@ -118,6 +119,7 @@ class PredictionService:
         return resp
 
     async def predict_many(self, req: BatchPredictRequest) -> BatchPredictResponse:
+        """Predict many rows in one preprocessing pass (stub fares when no model is loaded)."""
         if self.model is None:
             out = []
             for row in req.rows:

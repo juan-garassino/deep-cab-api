@@ -28,9 +28,18 @@ class MissingBackgroundError(RuntimeError):
 
 @dataclass
 class ExplanationService:
+    """SHAP explanations for the model held in `model`."""
+
     model: ModelHandle
 
     async def explain(self, req: ExplainRequest) -> ExplainResponse:
+        """Explain one row.
+
+        Raises
+        ------
+        MissingBackgroundError
+            If the model handle has no background sample.
+        """
         if self.model.background is None:
             # No background => only tree backends would technically work; fail
             # loud so the caller knows POST /train didn't store one.
@@ -46,6 +55,13 @@ class ExplanationService:
         )
 
     async def summary(self) -> dict:
+        """Return the cached global summary as `by_feature`, `n_background`, `fingerprint`.
+
+        Raises
+        ------
+        MissingBackgroundError
+            If the model handle has no background sample.
+        """
         if self.model.background is None:
             raise MissingBackgroundError("model has no background sample stored")
         summary = get_global_summary(self.model.estimator, self.model.background)

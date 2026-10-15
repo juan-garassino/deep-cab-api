@@ -24,6 +24,27 @@ log = get_logger(__name__)
 
 
 def migrate(size: str, split: str, src_root: Path | None = None) -> Path:
+    """Convert one legacy CSV split into Hive-partitioned Parquet.
+
+    Parameters
+    ----------
+    size : str
+        Dataset size tag, e.g. "1k".
+    split : str
+        "train" or "val".
+    src_root : Path, optional
+        Directory containing `raw/`; defaults to `settings.data.local_path`.
+
+    Returns
+    -------
+    Path
+        Parquet root that was written.
+
+    Raises
+    ------
+    FileNotFoundError
+        If `raw/<split>_<size>.csv` does not exist.
+    """
     settings = get_settings()
     src_root = (src_root or settings.data.local_path).expanduser() / "raw"
     csv = src_root / f"{split}_{size}.csv"
@@ -47,6 +68,7 @@ def migrate(size: str, split: str, src_root: Path | None = None) -> Path:
 
 
 def main() -> None:
+    """Command-line entry point (`python -m deepCab.data.migrate`)."""
     p = argparse.ArgumentParser()
     p.add_argument("--size", required=True, choices=["1k", "10k", "100k", "500k"])
     p.add_argument("--split", default="train", choices=["train", "val"])

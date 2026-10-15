@@ -71,6 +71,7 @@ def write_model_card(
     provenance: dict,
     shap_top: dict[str, float] | None = None,
 ) -> Path:
+    """Render `MODEL_CARD.md` from the template to `out_path` and return that path."""
     import yaml
 
     from deepCab.schemas.data import NYC_LAT, NYC_LON

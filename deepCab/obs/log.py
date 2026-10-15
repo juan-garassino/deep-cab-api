@@ -12,6 +12,7 @@ from deepCab.schemas.settings import get_settings
 
 @lru_cache(maxsize=1)
 def configure_logging() -> structlog.stdlib.BoundLogger:
+    """Configure structlog once: console renderer when `app_env` is dev, JSON otherwise."""
     settings = get_settings()
     is_dev = settings.app_env == "dev"
 
@@ -40,5 +41,6 @@ def configure_logging() -> structlog.stdlib.BoundLogger:
 
 
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
+    """Return a structlog logger, configuring logging on first use."""
     configure_logging()
     return structlog.get_logger(name or "deepcab")

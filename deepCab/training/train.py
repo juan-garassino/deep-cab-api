@@ -54,6 +54,8 @@ _ACI_MIN_ROWS = 30
 
 @dataclass
 class TrainResult:
+    """Outcome of a training run, including the fitted state when available."""
+
     run_id: str | None
     backend_kind: str
     val_mae: float
@@ -331,6 +333,7 @@ def _to_pydantic(cfg: DictConfig) -> TrainConfig:
 
 @hydra.main(version_base=None, config_path=str(CONFIG_DIR), config_name="config")
 def main(cfg: DictConfig) -> None:
+    """Hydra entry point: compose the config, validate it as `TrainConfig` and train."""
     run(_to_pydantic(cfg))
 
 

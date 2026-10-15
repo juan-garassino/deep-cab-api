@@ -27,7 +27,10 @@ def _build_servicer():
         raise RuntimeError("gRPC stubs not generated yet. Run `make grpc_gen` first.") from e
 
     class PredictServicer(deepcab_pb2_grpc.PredictServiceServicer):
+        """gRPC `PredictService` backed by the model in `STATE`."""
+
         def Predict(self, request, context):
+            """Return the fare (and interval when available); aborts with FAILED_PRECONDITION if no model is loaded."""
             if STATE.model is None:
                 context.abort(grpc.StatusCode.FAILED_PRECONDITION, "no model loaded")
             row = FeatureRow(
@@ -61,6 +64,7 @@ def _build_servicer():
 
 
 async def serve(port: int = 50051) -> None:
+    """Start the async gRPC server on `port` and block until it terminates."""
     servicer_cls, pb_grpc = _build_servicer()
     server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=4))
     pb_grpc.add_PredictServiceServicer_to_server(servicer_cls(), server)

@@ -38,9 +38,11 @@ class AbstractEstimator(BaseEstimator, RegressorMixin, ABC):
     # --- sklearn contract -------------------------------------------------
 
     def get_params(self, deep: bool = True) -> dict[str, Any]:
+        """Return the raw constructor kwargs (sklearn contract); `deep` is ignored."""
         return dict(self._cfg_kwargs)
 
     def set_params(self, **params: Any) -> AbstractEstimator:
+        """Update constructor kwargs and mirror them as attributes; returns `self`."""
         self._cfg_kwargs.update(params)
         for k, v in params.items():
             setattr(self, k, v)
@@ -53,10 +55,38 @@ class AbstractEstimator(BaseEstimator, RegressorMixin, ABC):
         return self.cfg_cls.model_validate(self._cfg_kwargs)
 
     def fit(self, X: np.ndarray, y: np.ndarray, **kw: Any) -> AbstractEstimator:
+        """Fit the backend.
+
+        Parameters
+        ----------
+        X : numpy.ndarray
+            Features, shape (n_samples, n_features).
+        y : numpy.ndarray
+            Targets, shape (n_samples,) or (n_samples, 1); flattened to 1-D.
+        **kw
+            Backend-specific options such as `validation_data=(X_val, y_val)`.
+
+        Returns
+        -------
+        AbstractEstimator
+            `self`.
+        """
         self._fit(np.asarray(X), np.asarray(y).ravel(), **kw)
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
+        """Predict targets.
+
+        Parameters
+        ----------
+        X : numpy.ndarray
+            Features, shape (n_samples, n_features).
+
+        Returns
+        -------
+        numpy.ndarray
+            Predictions, shape (n_samples,).
+        """
         return np.asarray(self._predict(np.asarray(X))).ravel()
 
     # --- backend hooks ----------------------------------------------------
@@ -68,12 +98,14 @@ class AbstractEstimator(BaseEstimator, RegressorMixin, ABC):
     def _predict(self, X: np.ndarray) -> np.ndarray: ...
 
     @abstractmethod
-    def save(self, path: Path) -> None: ...
+    def save(self, path: Path) -> None:
+        """Persist the fitted model at `path` (a file or a directory, depending on the backend)."""
 
     @classmethod
     @abstractmethod
-    def load(cls, path: Path) -> AbstractEstimator: ...
+    def load(cls, path: Path) -> AbstractEstimator:
+        """Rebuild a fitted estimator from what `save` wrote at `path`."""
 
     def to_onnx(self, path: Path, sample: np.ndarray) -> Path:
-        """Per-backend ONNX export lands in Phase 3 (deepCab/models/onnx_export.py)."""
+        """Export to ONNX at `path`; replaced at import time by `onnx_export.attach_onnx_method`."""
         raise NotImplementedError(f"ONNX export for {type(self).__name__} arrives in Phase 3")

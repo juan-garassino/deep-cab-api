@@ -33,6 +33,7 @@ async def start_train(
     bg: BackgroundTasks,
     svc: TrainingService = Depends(get_training_service),
 ) -> TrainStartResponse:
+    """`POST /train`: queue a background training run and return its `task_id`."""
     return await svc.start(req, bg)
 
 
@@ -41,6 +42,7 @@ async def get_train_status(
     task_id: str,
     svc: TrainingService = Depends(get_training_service),
 ) -> TrainStatusResponse:
+    """`GET /train/{task_id}`: status of a queued run (404 for unknown ids)."""
     try:
         return await svc.status(task_id)
     except UnknownTaskError as e:

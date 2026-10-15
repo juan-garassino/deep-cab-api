@@ -1,5 +1,5 @@
 """FastAPI factory. `create_app()` is the single entry point used by:
-    - uvicorn deepCab.api.app:create_app    (Makefile run_api)
+    - uvicorn deepCab.api.app:app           (Makefile run_api)
     - tests/api/* via TestClient
     - docker-compose api service
 
@@ -51,6 +51,7 @@ def _resolve_cors_origins() -> list[str]:
 
 
 def create_app() -> FastAPI:
+    """Build the FastAPI app: middleware, routers, `/metrics` mount and the unhandled-exception handler."""
     app = FastAPI(
         title="deepCab API",
         description="NYC taxi-fare MLOps learning hub",

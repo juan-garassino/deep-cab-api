@@ -43,11 +43,15 @@ class _ToolOut(BaseModel):
 
 # preprocess
 class PreprocessIn(_ToolIn):
+    """Arguments of the `preprocess` tool."""
+
     data: DataRef = Field(default_factory=DataRef)
     split: Literal["train", "val"] = "train"
 
 
 class PreprocessOut(_ToolOut):
+    """Row/feature counts and fare summary of one cleaned split."""
+
     n_rows: int
     n_features: int
     fare_min: float
@@ -57,12 +61,16 @@ class PreprocessOut(_ToolOut):
 
 # train
 class TrainIn(_ToolIn):
+    """Arguments of the `train` tool."""
+
     backend: BackendConfig
     data: DataRef = Field(default_factory=DataRef)
     seed: int = 42
 
 
 class TrainOut(_ToolOut):
+    """Outcome of the `train` tool (MLflow run id, backend, validation MAE)."""
+
     run_id: str | None
     backend_kind: str
     val_mae: float
@@ -70,10 +78,14 @@ class TrainOut(_ToolOut):
 
 # evaluate
 class EvaluateIn(_ToolIn):
+    """Arguments of the `evaluate` tool."""
+
     split: Literal["train", "val"] = "val"
 
 
 class EvaluateOut(_ToolOut):
+    """MAE, RMSE and row count of an evaluation pass."""
+
     mae: float
     rmse: float
     n: int
@@ -81,20 +93,28 @@ class EvaluateOut(_ToolOut):
 
 # predict
 class PredictIn(_ToolIn):
+    """Arguments of the `predict` tool."""
+
     row: FeatureRow
 
 
 class PredictOut(_ToolOut):
+    """Predicted fare and the backend that produced it."""
+
     fare: float
     backend_kind: str
 
 
 # explain
 class ExplainIn(_ToolIn):
+    """Arguments of the `explain` tool."""
+
     row: FeatureRow
 
 
 class ExplainOut(_ToolOut):
+    """SHAP prediction, base value and per-group attributions for one row."""
+
     prediction: float
     base_value: float
     shap_by_feature: dict[str, float]
@@ -102,12 +122,16 @@ class ExplainOut(_ToolOut):
 
 # tune
 class TuneIn(_ToolIn):
+    """Arguments of the `tune` tool (one Optuna study for one backend)."""
+
     backend_kind: Literal["tf_mlp", "torch_mlp", "xgb", "lgbm", "catboost", "ft_transformer"]
     n_trials: int = Field(ge=2, le=200, default=20)
     data: DataRef = Field(default_factory=DataRef)
 
 
 class TuneOut(_ToolOut):
+    """Best objective value and params found by the `tune` tool."""
+
     best_value: float
     best_params: dict
     backend_kind: str
@@ -116,29 +140,41 @@ class TuneOut(_ToolOut):
 
 # list_runs / compare_runs / propose
 class ListRunsIn(_ToolIn):
+    """Arguments of the `list_runs` tool."""
+
     top_k: int = Field(ge=1, le=50, default=10)
     metric: str = "val_mae"
 
 
 class ListRunsOut(_ToolOut):
+    """Serialized `MemoryEntry` rows."""
+
     runs: list[dict]
 
 
 class ComparePairIn(_ToolIn):
+    """Arguments of the `compare_runs` tool (2 to 10 run ids)."""
+
     run_ids: list[str] = Field(min_length=2, max_length=10)
 
 
 class ComparePairOut(_ToolOut):
+    """Per-run details plus param and metric diffs."""
+
     runs: list[dict]
     param_diff: dict[str, dict]
     metric_diff: dict[str, dict]
 
 
 class ProposeIn(_ToolIn):
+    """Arguments of the `propose_next_experiment` tool."""
+
     goal: str = "reduce val_mae"
 
 
 class ProposeOut(_ToolOut):
+    """Suggested backend settings and the reasoning behind them."""
+
     suggestion: dict
     rationale: str
 
@@ -163,10 +199,8 @@ def _preprocess(args: PreprocessIn) -> PreprocessOut:
 def _train(args: TrainIn) -> TrainOut:
     from deepCab.training.train import run as run_train
 
-    # P11 fix: train.run() now populates STATE.model with the fitted estimator
-    # + background + ACI. No more double-fit — agent and predict tool see the
-    # same trained weights, which means val_mae reported and /predict outputs
-    # are consistent.
+    # train.run() also populates STATE.model, so `predict`/`evaluate` use the
+    # same fitted weights that produced the reported val_mae (no second fit).
     cfg = TrainConfig(backend=args.backend, data=args.data, seed=args.seed)
     result = run_train(cfg)
 
@@ -351,4 +385,5 @@ def dispatch(name: str, args: dict) -> dict:
 
 
 def tool_names() -> list[str]:
+    """Return the registered tool names in registration order."""
     return list(_TOOLS)

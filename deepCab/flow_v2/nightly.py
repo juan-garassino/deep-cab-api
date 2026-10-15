@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timedelta
+from typing import Any
 
 from deepCab.data.bigquery import chunk_where_clause
 from deepCab.flow_v2.simulate import _env_overlay, _simulate_impl
@@ -96,7 +97,7 @@ def _mlflow_client():
     return get_mlflow_client()
 
 
-def run_nightly(period_days: int = 14, *, client=None) -> int:
+def run_nightly(period_days: int = 14, *, client: Any = None) -> int:
     """Train one sliding-window chunk on real public BQ data, persist the
     cursor as MLflow tags, advance. Returns a process exit code — 0 even when
     it deliberately no-ops, so the schedule stays green."""
@@ -141,6 +142,7 @@ def run_nightly(period_days: int = 14, *, client=None) -> int:
 
 
 def main() -> None:
+    """Command-line entry point; exits with the status of `run_nightly`."""
     parser = argparse.ArgumentParser(description="deepCab nightly sliding-window bench")
     parser.add_argument("--period-days", type=int, default=14, help="chunk width in days")
     args = parser.parse_args()

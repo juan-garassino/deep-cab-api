@@ -29,6 +29,7 @@ async def predict(
     req: PredictRequest,
     svc: PredictionService = Depends(get_prediction_service),
 ) -> PredictResponse:
+    """`POST /predict`: one row to a fare (plus interval when calibrated)."""
     return await svc.predict_one(req)
 
 
@@ -37,6 +38,7 @@ async def predict_batch(
     req: BatchPredictRequest,
     svc: PredictionService = Depends(get_prediction_service),
 ) -> BatchPredictResponse:
+    """`POST /predict/batch`: up to 10,000 rows to a list of fares."""
     return await svc.predict_many(req)
 
 
@@ -44,6 +46,6 @@ async def predict_batch(
 async def predict_stream(
     req: BatchPredictRequest,
     svc: PredictionService = Depends(get_prediction_service),
-):
+) -> EventSourceResponse:
     """SSE stream of per-row predictions; closes with an event {count: N}."""
     return EventSourceResponse(svc.predict_stream(req))

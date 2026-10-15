@@ -18,6 +18,7 @@ Two correctness invariants worth knowing:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -32,13 +33,15 @@ TREE_KINDS = {"xgb", "lgbm", "catboost"}
 
 @dataclass
 class Explanation:
+    """SHAP result for one row: prediction, base value, raw 65-d values and 5-group sums."""
+
     prediction: float
     base_value: float
     values: np.ndarray  # raw 65-d SHAP for the queried row
     aggregated: dict[str, float]  # 5-group summary keyed by FEATURE_ORDER
 
 
-def make_explainer(estimator: AbstractEstimator, background: np.ndarray):
+def make_explainer(estimator: AbstractEstimator, background: np.ndarray) -> Any:
     """Pick the right SHAP explainer for this estimator. `background` is a
     representative sample of the training distribution — used by Deep / Gradient
     / Kernel explainers as the reference point."""

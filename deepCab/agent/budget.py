@@ -31,6 +31,18 @@ _PRICES: dict[str, tuple[float, float]] = {
 
 @dataclass
 class Budget:
+    """Running totals checked against a `BudgetCap`.
+
+    Attributes
+    ----------
+    cap : BudgetCap
+        Limits on iterations, tool calls and USD spend.
+    iters, tool_calls : int
+        Counters incremented by `charge_iter` / `charge_tool_call`.
+    usd : float
+        Spend accumulated by `charge_llm_usage`.
+    """
+
     cap: BudgetCap
     iters: int = 0
     tool_calls: int = 0
@@ -67,12 +79,21 @@ class Budget:
         )
 
     def charge_tool_call(self) -> None:
+        """Count one tool call."""
         self.tool_calls += 1
 
     def charge_iter(self) -> None:
+        """Count one loop iteration."""
         self.iters += 1
 
     def check_or_raise(self) -> None:
+        """Raise `BudgetExhausted` once any counter has reached its cap.
+
+        Raises
+        ------
+        BudgetExhausted
+            If `iters`, `tool_calls` or `usd` is at or above the matching cap.
+        """
         if self.iters >= self.cap.max_iters:
             raise BudgetExhausted(f"max_iters={self.cap.max_iters} reached (iters={self.iters})")
         if self.tool_calls >= self.cap.max_tool_calls:

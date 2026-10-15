@@ -21,6 +21,8 @@ import numpy as np
 
 @dataclass
 class ONNXRuntime:
+    """An ONNX Runtime inference session with its input/output names."""
+
     session: object  # onnxruntime.InferenceSession (avoid eager import)
     input_name: str
     output_name: str
@@ -31,6 +33,7 @@ class ONNXRuntime:
     def from_path(
         cls, path: Path, backend_kind: str, providers: list[str] | None = None
     ) -> ONNXRuntime:
+        """Open `path` with the given providers (CPU by default)."""
         import onnxruntime as ort
 
         sess = ort.InferenceSession(
@@ -64,22 +67,26 @@ class RuntimeRegistry:
         self._active_key: str | None = None
 
     def register(self, key: str, runtime: ONNXRuntime) -> None:
+        """Add a runtime under `key`; the first one registered becomes active."""
         with self._lock:
             self._runtimes[key] = runtime
             if self._active_key is None:
                 self._active_key = key
 
     def activate(self, key: str) -> None:
+        """Make `key` the active runtime (KeyError if unknown)."""
         with self._lock:
             if key not in self._runtimes:
                 raise KeyError(f"runtime '{key}' not registered")
             self._active_key = key
 
     def active(self) -> ONNXRuntime | None:
+        """Return the active runtime, or None."""
         with self._lock:
             return self._runtimes.get(self._active_key) if self._active_key else None
 
     def keys(self) -> list[str]:
+        """Return the registered keys."""
         with self._lock:
             return list(self._runtimes)
 

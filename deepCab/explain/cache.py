@@ -29,6 +29,8 @@ log = get_logger(__name__)
 
 @dataclass
 class GlobalSummary:
+    """Mean(|SHAP|) per feature group, with the sample size and cache fingerprint."""
+
     by_feature: dict[str, float]
     n_background: int
     fingerprint: str
@@ -39,6 +41,7 @@ _REDIS_KEY_PREFIX = "deepcab:shap:summary:"
 
 
 def fingerprint(estimator: AbstractEstimator, background: np.ndarray) -> str:
+    """Hash of the estimator config and the background sample bytes; used as the cache key."""
     cfg_digest = estimator.cfg.model_dump_json()  # type: ignore[attr-defined]
     bg_hash = hashlib.blake2b(background.tobytes(), digest_size=8).hexdigest()
     return hashlib.blake2b(f"{cfg_digest}|{bg_hash}".encode(), digest_size=16).hexdigest()
@@ -49,6 +52,17 @@ def compute_global_summary(
     background: np.ndarray,
     sample_size: int = 200,
 ) -> GlobalSummary:
+    """Compute mean(|SHAP|) per group on a random sample of the background.
+
+    Parameters
+    ----------
+    estimator : AbstractEstimator
+        Fitted model.
+    background : numpy.ndarray
+        Reference sample, shape (n, 65).
+    sample_size : int
+        Rows drawn without replacement (seeded) and explained.
+    """
     rng = np.random.default_rng(0)
     n = min(sample_size, len(background))
     idx = rng.choice(len(background), size=n, replace=False)
@@ -116,6 +130,7 @@ def get_global_summary(
     background: np.ndarray,
     sample_size: int = 200,
 ) -> GlobalSummary:
+    """Return the cached summary for this model and background, computing and storing it on a miss."""
     fp = fingerprint(estimator, background)
     cached = _get_cached(fp)
     if cached is not None:

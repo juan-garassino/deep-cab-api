@@ -12,10 +12,14 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from typing import TYPE_CHECKING
 
 from deepCab.agent.tools import openai_tools
 from deepCab.obs.log import get_logger
 from deepCab.schemas.agent import Plan, ToolCall
+
+if TYPE_CHECKING:
+    from openai import OpenAI
 
 log = get_logger(__name__)
 
@@ -37,7 +41,7 @@ Output: a single JSON object {"steps": [{"name": "...", "args": {...}}, ...]}
 returned as the assistant message content. Do NOT actually call the tools."""
 
 
-def make_plan(client, model: str, goal: str) -> Plan:
+def make_plan(client: OpenAI, model: str, goal: str) -> Plan:
     """Synchronous helper. Asks the LLM for a plan; parses tool_calls or the
     JSON content fallback. `client` is an openai.OpenAI (or any compatible) instance."""
     resp = client.chat.completions.create(

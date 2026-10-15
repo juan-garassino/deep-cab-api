@@ -13,6 +13,15 @@ from deepCab.models.base import AbstractEstimator
 
 
 def build_estimator(cfg: BaseModel) -> AbstractEstimator:
+    """Instantiate the estimator registered for `cfg.kind`.
+
+    Raises
+    ------
+    ValueError
+        If `cfg` has no `kind` attribute.
+    KeyError
+        If `kind` is not registered in `deepCab.models._kinds.BACKENDS`.
+    """
     kind = getattr(cfg, "kind", None)
     if kind is None:
         raise ValueError(f"Config {type(cfg).__name__} has no 'kind' discriminator")

@@ -11,6 +11,7 @@ router = APIRouter(tags=["monitor"])
 
 @router.get("/healthz")
 def healthz() -> dict:
+    """`GET /healthz`: liveness probe."""
     return {"status": "ok"}
 
 

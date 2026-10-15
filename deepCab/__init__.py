@@ -1,3 +1,5 @@
+"""deepCab: NYC taxi-fare MLOps learning hub (training, serving, agent, orchestration)."""
+
 from os.path import dirname, isfile
 
 version_file = f"{dirname(__file__)}/version.txt"

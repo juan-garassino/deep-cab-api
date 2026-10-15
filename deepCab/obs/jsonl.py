@@ -24,6 +24,8 @@ _current_span: contextvars.ContextVar[Span | None] = contextvars.ContextVar(
 
 @dataclass
 class Event:
+    """One line of the JSONL trace: a span start/end or a note."""
+
     ts: float
     run_id: str
     span_id: str
@@ -40,6 +42,8 @@ class Event:
 
 @dataclass
 class Span:
+    """An open trace span; `Tracer.span` yields it."""
+
     run_id: str
     span_id: str
     parent_id: str | None
@@ -49,6 +53,8 @@ class Span:
 
 
 class Tracer:
+    """Append-only JSONL tracer, one file per `run_id` under `settings.obs.trace_dir`; no-op when disabled."""
+
     def __init__(self, run_id: str | None = None, enabled: bool | None = None) -> None:
         obs = get_settings().obs
         self.run_id = run_id or uuid.uuid4().hex[:12]
@@ -73,6 +79,7 @@ class Tracer:
         args: dict | None = None,
         meta: dict | None = None,
     ) -> Iterator[Span]:
+        """Context manager that writes start and end events, nests under the current span and records errors."""
         parent = _current_span.get()
         sp = Span(
             run_id=self.run_id,
@@ -121,6 +128,7 @@ class Tracer:
             )
 
     def note(self, name: str, **fields: Any) -> None:
+        """Write a single `note` event with `fields` as metadata."""
         if not self.enabled:
             return
         parent = _current_span.get()
@@ -139,6 +147,7 @@ class Tracer:
 
 
 def attach_result(span: Span, result: dict | None) -> None:
+    """Attach a result dict to `span`; it is written with the span's end event."""
     span._result = result  # type: ignore[attr-defined]
 
 

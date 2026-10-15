@@ -4,8 +4,7 @@ Architecture: dense + batchnorm + dropout stack with L1/L2 regularization on the
 first hidden layer. Adam optimizer, MSE loss, MAE metric, early stopping on
 val_loss with restore_best_weights.
 
-Phase 3 will add ONNX export here via tf2onnx (opset 17). Phase 7 wires the
-exported model into the ONNX runtime for serving."""
+ONNX export (tf2onnx, opset 17) lives in `deepCab/models/onnx_export.py`."""
 
 from __future__ import annotations
 
@@ -19,6 +18,8 @@ from deepCab.schemas.config import TFMLPConfig
 
 
 class TFMLPEstimator(AbstractEstimator):
+    """Keras MLP regressor; uses the passed validation data, else a 30% validation split."""
+
     cfg_cls = TFMLPConfig
 
     def _build(self, input_dim: int):
@@ -83,6 +84,7 @@ class TFMLPEstimator(AbstractEstimator):
         return self.model_.predict(X, verbose=0).ravel()
 
     def save(self, path: Path) -> None:
+        """Write `model.keras` inside the directory `path`."""
         # Keras 3 requires an explicit `.keras` (or `.h5`) extension — the old
         # SavedModel-directory form (model.save(dir)) now raises. Write the
         # native-format file inside the run dir the dispatcher hands us.
@@ -91,6 +93,7 @@ class TFMLPEstimator(AbstractEstimator):
 
     @classmethod
     def load(cls, path: Path) -> TFMLPEstimator:
+        """Load `model.keras` from the directory `path` into a default-config estimator."""
         from tensorflow.keras.models import load_model
 
         # Reconstruct an estimator with defaults; weights come from disk.

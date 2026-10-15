@@ -40,6 +40,7 @@ def _client():
 
 
 def repl() -> None:
+    """Read goals from stdin and stream each agent event as one JSON line until `/quit` or EOF."""
     client, model = _client()
     print(
         f"deepCab agent REPL — model={model}. Type /improve <goal> or a free goal. /quit to exit."

@@ -28,6 +28,8 @@ from deepCab.schemas.agent import BudgetCap, ImproveConfig
 
 
 class AgentTurnRequest(BaseModel):
+    """Body of `POST /agent`: one user message and a budget."""
+
     model_config = ConfigDict(extra="forbid")
     message: str = Field(min_length=1, max_length=2000)
     budget: BudgetCap = Field(
@@ -36,6 +38,8 @@ class AgentTurnRequest(BaseModel):
 
 
 class AgentImproveRequest(BaseModel):
+    """Body of `POST /agent/improve`: goal, mandatory budget and loop guards."""
+
     model_config = ConfigDict(extra="forbid")
     goal: str = Field(min_length=1, max_length=500)
     budget: BudgetCap

@@ -23,10 +23,14 @@ from deepCab.schemas.enums import (
 
 
 class BackendBase(BaseModel):
+    """Base of all backend configs; rejects unknown fields."""
+
     model_config = ConfigDict(extra="forbid")
 
 
 class TFMLPConfig(BackendBase):
+    """Hyperparameters of the TensorFlow MLP backend."""
+
     kind: Literal["tf_mlp"] = "tf_mlp"
     hidden: list[int] = Field(default_factory=lambda: [100, 50, 10])
     dropout: float = 0.1
@@ -38,6 +42,8 @@ class TFMLPConfig(BackendBase):
 
 
 class TorchMLPConfig(BackendBase):
+    """Hyperparameters of the PyTorch MLP backend."""
+
     kind: Literal["torch_mlp"] = "torch_mlp"
     hidden: list[int] = Field(default_factory=lambda: [128, 64])
     dropout: float = 0.1
@@ -48,6 +54,8 @@ class TorchMLPConfig(BackendBase):
 
 
 class XGBConfig(BackendBase):
+    """Hyperparameters of the XGBoost backend."""
+
     kind: Literal["xgb"] = "xgb"
     n_estimators: int = 500
     max_depth: int = 6
@@ -56,6 +64,8 @@ class XGBConfig(BackendBase):
 
 
 class LGBMConfig(BackendBase):
+    """Hyperparameters of the LightGBM backend."""
+
     kind: Literal["lgbm"] = "lgbm"
     n_estimators: int = 500
     num_leaves: int = 31
@@ -63,6 +73,8 @@ class LGBMConfig(BackendBase):
 
 
 class CatBoostConfig(BackendBase):
+    """Hyperparameters of the CatBoost backend."""
+
     kind: Literal["catboost"] = "catboost"
     iterations: int = 500
     depth: int = 6
@@ -70,6 +82,8 @@ class CatBoostConfig(BackendBase):
 
 
 class FTTransformerConfig(BackendBase):
+    """Hyperparameters of the FT-Transformer backend."""
+
     kind: Literal["ft_transformer"] = "ft_transformer"
     d_token: int = 192
     n_blocks: int = 3
@@ -111,6 +125,8 @@ class DataRef(BaseModel):
 
 
 class CVConfig(BaseModel):
+    """Cross-validation settings."""
+
     model_config = ConfigDict(extra="forbid")
 
     kind: CVKind = CVKind.TIMESERIES
@@ -118,6 +134,8 @@ class CVConfig(BaseModel):
 
 
 class HPOConfig(BaseModel):
+    """Optuna study settings."""
+
     model_config = ConfigDict(extra="forbid")
 
     n_trials: int = 50
@@ -128,6 +146,8 @@ class HPOConfig(BaseModel):
 
 
 class TrainConfig(BaseModel):
+    """Full training configuration: backend, data, optional CV and HPO, seed."""
+
     model_config = ConfigDict(extra="forbid")
 
     backend: BackendConfig

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from deepCab.models.base import AbstractEstimator
 from deepCab.obs.log import get_logger
 from deepCab.schemas.config import DataRef
 from deepCab.training.preprocess import preprocess
@@ -15,12 +16,15 @@ log = get_logger(__name__)
 
 @dataclass
 class EvalResult:
+    """MAE, RMSE and number of rows of an evaluation."""
+
     mae: float
     rmse: float
     n: int
 
 
-def evaluate(estimator, data: DataRef, split: str = "val") -> EvalResult:
+def evaluate(estimator: AbstractEstimator, data: DataRef, split: str = "val") -> EvalResult:
+    """Score `estimator` on the given split of `data`."""
     X, y = preprocess(data, split=split)
     pred = np.asarray(estimator.predict(X)).ravel()
     mae = float(np.mean(np.abs(pred - y)))

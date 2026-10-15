@@ -21,6 +21,8 @@ from deepCab.schemas.config import CatBoostConfig, LGBMConfig, XGBConfig
 
 
 class XGBEstimator(AbstractEstimator):
+    """XGBoost regressor (`hist` tree method)."""
+
     cfg_cls = XGBConfig
 
     def _fit(self, X: np.ndarray, y: np.ndarray, **_: Any) -> None:
@@ -41,11 +43,13 @@ class XGBEstimator(AbstractEstimator):
         return self.model_.predict(X)
 
     def save(self, path: Path) -> None:
+        """Write the booster to `path` in XGBoost's native format."""
         path.parent.mkdir(parents=True, exist_ok=True)
         self.model_.save_model(str(path))
 
     @classmethod
     def load(cls, path: Path) -> XGBEstimator:
+        """Load a booster written by `save` into a default-config estimator."""
         from xgboost import XGBRegressor
 
         est = cls(**XGBConfig().model_dump())
@@ -55,6 +59,8 @@ class XGBEstimator(AbstractEstimator):
 
 
 class LGBMEstimator(AbstractEstimator):
+    """LightGBM regressor."""
+
     cfg_cls = LGBMConfig
 
     def _fit(self, X: np.ndarray, y: np.ndarray, **_: Any) -> None:
@@ -74,11 +80,13 @@ class LGBMEstimator(AbstractEstimator):
         return self.model_.predict(X)
 
     def save(self, path: Path) -> None:
+        """Write the booster to `path` in LightGBM's text format."""
         path.parent.mkdir(parents=True, exist_ok=True)
         self.model_.booster_.save_model(str(path))
 
     @classmethod
     def load(cls, path: Path) -> LGBMEstimator:
+        """Load a booster written by `save`; predictions go through `Booster.predict`."""
         import lightgbm as lgb
 
         est = cls(**LGBMConfig().model_dump())
@@ -89,6 +97,8 @@ class LGBMEstimator(AbstractEstimator):
 
 
 class CatBoostEstimator(AbstractEstimator):
+    """CatBoost regressor (no training files written to disk)."""
+
     cfg_cls = CatBoostConfig
 
     def _fit(self, X: np.ndarray, y: np.ndarray, **_: Any) -> None:
@@ -108,11 +118,13 @@ class CatBoostEstimator(AbstractEstimator):
         return self.model_.predict(X)
 
     def save(self, path: Path) -> None:
+        """Write the model to `path` in CatBoost's native format."""
         path.parent.mkdir(parents=True, exist_ok=True)
         self.model_.save_model(str(path))
 
     @classmethod
     def load(cls, path: Path) -> CatBoostEstimator:
+        """Load a model written by `save` into a default-config estimator."""
         from catboost import CatBoostRegressor
 
         est = cls(**CatBoostConfig().model_dump())

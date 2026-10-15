@@ -48,6 +48,13 @@ class FileUriEnvSettingsSource(EnvSettingsSource):
     """
 
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
+        """Read the field from the environment, resolving `file:<path>` values to the file's contents.
+
+        Raises
+        ------
+        FileNotFoundError
+            If a `file:` value points to a missing file.
+        """
         value, key, is_complex = super().get_field_value(field, field_name)
         if isinstance(value, str) and value.startswith("file:"):
             path = Path(value[len("file:") :]).expanduser()
@@ -75,6 +82,8 @@ def _customise_sources(
 
 
 class DataSettings(BaseSettings):
+    """Data locations and sizes (env prefix `DATA_`)."""
+
     model_config = SettingsConfigDict(env_prefix="DATA_", env_file=_env_file(), extra="ignore")
 
     source: DataSource = DataSource.LOCAL
@@ -100,6 +109,8 @@ class DataSettings(BaseSettings):
 
 
 class RegistrySettings(BaseSettings):
+    """Where run artifacts are stored (env prefix `REGISTRY_`)."""
+
     model_config = SettingsConfigDict(env_prefix="REGISTRY_", env_file=_env_file(), extra="ignore")
 
     target: ModelTarget = ModelTarget.LOCAL
@@ -108,6 +119,8 @@ class RegistrySettings(BaseSettings):
 
 
 class GCPSettings(BaseSettings):
+    """Google Cloud project and dataset (env prefix `GCP_`)."""
+
     model_config = SettingsConfigDict(env_prefix="GCP_", env_file=_env_file(), extra="ignore")
 
     project_id: str | None = None
@@ -115,6 +128,8 @@ class GCPSettings(BaseSettings):
 
 
 class MLflowSettings(BaseSettings):
+    """MLflow tracking and registry names (env prefix `MLFLOW_`)."""
+
     model_config = SettingsConfigDict(env_prefix="MLFLOW_", env_file=_env_file(), extra="ignore")
 
     tracking_uri: str | None = None
@@ -125,6 +140,8 @@ class MLflowSettings(BaseSettings):
 
 
 class ObsSettings(BaseSettings):
+    """Logging, tracing, metrics, CORS and notification settings (env prefix `OBS_`)."""
+
     model_config = SettingsConfigDict(env_prefix="OBS_", env_file=_env_file(), extra="ignore")
 
     otlp_endpoint: str = "http://localhost:4317"
@@ -155,12 +172,15 @@ class ObsSettings(BaseSettings):
     def settings_customise_sources(
         cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings
     ):
+        """Resolve `file:` URIs in environment values."""
         return _customise_sources(
             settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings
         )
 
 
 class OpenAISettings(BaseSettings):
+    """OpenAI credentials and model name (env prefix `OPENAI_`)."""
+
     model_config = SettingsConfigDict(env_prefix="OPENAI_", env_file=_env_file(), extra="ignore")
 
     api_key: str | None = None
@@ -170,6 +190,7 @@ class OpenAISettings(BaseSettings):
     def settings_customise_sources(
         cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings
     ):
+        """Resolve `file:` URIs in environment values."""
         return _customise_sources(
             settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings
         )
@@ -188,6 +209,7 @@ class DeepCabSettings(BaseSettings):
     def settings_customise_sources(
         cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings
     ):
+        """Resolve `file:` URIs in environment values."""
         return _customise_sources(
             settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings
         )
@@ -216,4 +238,5 @@ class Settings(BaseSettings):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
+    """Return the process-wide `Settings` instance (cached after first call)."""
     return Settings()

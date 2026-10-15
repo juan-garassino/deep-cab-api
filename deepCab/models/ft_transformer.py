@@ -42,6 +42,8 @@ def _build_module(input_dim: int, c: FTTransformerConfig):
         raise ValueError(f"d_token={c.d_token} must be divisible by n_heads={N_HEADS}")
 
     class FeatureTokenizer(nn.Module):
+        """Embed each scalar feature as a `d_token` vector and prepend a learned CLS token."""
+
         def __init__(self) -> None:
             super().__init__()
             self.weight = nn.Parameter(torch.empty(input_dim, c.d_token))
@@ -52,12 +54,15 @@ def _build_module(input_dim: int, c: FTTransformerConfig):
             nn.init.kaiming_uniform_(self.cls, a=5**0.5)
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
+            """Map x of shape (B, F) to tokens of shape (B, F + 1, d_token)."""
             # x: (B, F) -> (B, F, d)  via x.unsqueeze(-1) * W + b
             tokens = x.unsqueeze(-1) * self.weight + self.bias
             cls = self.cls.expand(x.shape[0], -1, -1)
             return torch.cat([cls, tokens], dim=1)
 
     class Block(nn.Module):
+        """Pre-norm transformer block: multi-head self-attention then a GELU feed-forward layer."""
+
         def __init__(self) -> None:
             super().__init__()
             self.ln1 = nn.LayerNorm(c.d_token)
@@ -73,6 +78,7 @@ def _build_module(input_dim: int, c: FTTransformerConfig):
             )
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
+            """Map (B, T, d_token) to (B, T, d_token) with residual connections."""
             h = self.ln1(x)
             attn_out, _ = self.attn(h, h, h, need_weights=False)
             x = x + attn_out
@@ -80,6 +86,8 @@ def _build_module(input_dim: int, c: FTTransformerConfig):
             return x
 
     class FTTransformer(nn.Module):
+        """Tokenizer, `n_blocks` transformer blocks and a regression head on the CLS token."""
+
         def __init__(self) -> None:
             super().__init__()
             self.tokenizer = FeatureTokenizer()
@@ -87,6 +95,7 @@ def _build_module(input_dim: int, c: FTTransformerConfig):
             self.head = nn.Sequential(nn.LayerNorm(c.d_token), nn.Linear(c.d_token, 1))
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
+            """Map x of shape (B, F) to predictions of shape (B,)."""
             h = self.tokenizer(x)
             for blk in self.blocks:
                 h = blk(h)
@@ -96,6 +105,8 @@ def _build_module(input_dim: int, c: FTTransformerConfig):
 
 
 class FTTransformerEstimator(AbstractEstimator):
+    """FT-Transformer regressor trained with AdamW and MSE (PyTorch)."""
+
     cfg_cls = FTTransformerConfig
 
     def _fit(
@@ -157,6 +168,13 @@ class FTTransformerEstimator(AbstractEstimator):
 
     @classmethod
     def load(cls, path: Path) -> FTTransformerEstimator:
+        """Restore weights from `path` and the `.cfg.json` sidecar written by `save`.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the sidecar is missing.
+        """
         import json
 
         import torch

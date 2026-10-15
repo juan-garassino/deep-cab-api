@@ -33,6 +33,12 @@ class _Item:
 
 
 class Batcher:
+    """Micro-batch single-row requests into one ONNX call.
+
+    A batch is sent when `max_batch` rows are queued or `max_wait_ms` has passed
+    since the first row, whichever comes first.
+    """
+
     def __init__(
         self,
         runtime: ONNXRuntime,
@@ -47,10 +53,12 @@ class Batcher:
         self._closed = False
 
     async def start(self) -> None:
+        """Start the background worker (no-op if running)."""
         if self._task is None:
             self._task = asyncio.create_task(self._run())
 
     async def stop(self) -> None:
+        """Stop the worker; later `submit` calls raise RuntimeError."""
         self._closed = True
         if self._task is not None:
             # Wake the worker so it sees `_closed`
@@ -60,6 +68,18 @@ class Batcher:
             await self._task
 
     async def submit(self, row: np.ndarray) -> float:
+        """Queue one row and wait for its prediction.
+
+        Parameters
+        ----------
+        row : numpy.ndarray
+            Features, shape (n_features,); cast to float32.
+
+        Returns
+        -------
+        float
+            Prediction for the row.
+        """
         if self._closed:
             raise RuntimeError("Batcher is closed")
         fut: asyncio.Future = asyncio.get_running_loop().create_future()

@@ -14,6 +14,7 @@ import hashlib
 import json
 from collections import Counter
 from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 from deepCab.agent.budget import Budget, BudgetExhausted
 from deepCab.agent.executor import run_one_turn
@@ -22,11 +23,14 @@ from deepCab.agent.trace import AgentEvent, AgentTrace
 from deepCab.obs.log import get_logger
 from deepCab.schemas.agent import ImproveConfig
 
+if TYPE_CHECKING:
+    from openai import OpenAI
+
 log = get_logger(__name__)
 
 
 def run_improve(
-    client,
+    client: OpenAI,
     model: str,
     cfg: ImproveConfig,
 ) -> Iterator[dict]:

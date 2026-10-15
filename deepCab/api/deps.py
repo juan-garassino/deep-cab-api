@@ -36,6 +36,7 @@ from deepCab.schemas.settings import Settings, get_settings
 
 
 def settings_dep() -> Settings:
+    """Return the cached `Settings` (FastAPI dependency)."""
     return get_settings()
 
 
@@ -117,20 +118,24 @@ def get_optional_model_handle() -> ModelHandle | None:
 def get_prediction_service(
     model: ModelHandle | None = Depends(get_optional_model_handle),
 ) -> PredictionService:
+    """Build a `PredictionService`; uses a stub fare when no model is loaded."""
     return PredictionService(model=model)
 
 
 def get_explanation_service(
     model: ModelHandle = Depends(get_model_handle),
 ) -> ExplanationService:
+    """Build an `ExplanationService` (503 when no model is loaded)."""
     return ExplanationService(model=model)
 
 
 def get_training_service() -> TrainingService:
+    """Build a `TrainingService`."""
     return TrainingService()
 
 
 def get_agent_service(
     trace: TraceProvider = Depends(get_trace_provider),
 ) -> AgentService:
+    """Build an `AgentService` using the configured trace provider."""
     return AgentService(trace=trace)

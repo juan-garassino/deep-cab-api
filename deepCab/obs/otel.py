@@ -17,6 +17,7 @@ from deepCab.schemas.settings import get_settings
 
 @lru_cache(maxsize=1)
 def init_tracing() -> trace.Tracer:
+    """Install an OTLP span exporter (once per process) and return the tracer."""
     obs = get_settings().obs
     resource = Resource.create({"service.name": obs.service_name})
     provider = TracerProvider(resource=resource)
