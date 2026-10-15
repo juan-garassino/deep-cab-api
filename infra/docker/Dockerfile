@@ -37,7 +37,14 @@ FROM python:3.11-slim AS runtime
 
 WORKDIR /prod
 
-COPY --from=builder /prod /prod
+# Run as an unprivileged user: a compromised request handler must not get
+# root inside the container (Guardian G-004).
+RUN groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --no-create-home app
+
+COPY --from=builder --chown=app:app /prod /prod
 ENV PATH="/prod/.venv/bin:$PATH"
+
+USER 10001
 
 CMD uvicorn deepCab.api.app:app --host 0.0.0.0 --port ${PORT:-8000}
