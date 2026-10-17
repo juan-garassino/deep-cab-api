@@ -18,6 +18,7 @@ Public surface for routers (unchanged names so existing imports keep working):
 
 from __future__ import annotations
 
+import hmac
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status
@@ -71,7 +72,9 @@ def api_key_guard(
     Resolution order (P13):
       1. settings.deepcab.api_key — explicit deepCab key (preferred).
       2. settings.openai.api_key  — legacy fallback; warns so the operator sees it.
-      3. Neither set — open access (dev convenience).
+      3. Neither set — open access in non-prod (dev convenience); in prod the
+         gate fails CLOSED with 503 so a deploy that forgot DEEPCAB_API_KEY
+         never exposes /train, /agent or /graphql to the internet.
     """
     expected = settings.deepcab.api_key
     if not expected and settings.openai.api_key:
@@ -83,8 +86,14 @@ def api_key_guard(
         )
         expected = settings.openai.api_key
     if not expected:
+        if settings.app_env == "prod":
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="API key not configured (set DEEPCAB_API_KEY)",
+            )
         return  # dev open mode
-    if x_api_key != expected:
+    # Constant-time compare: `!=` short-circuits and leaks a timing oracle.
+    if x_api_key is None or not hmac.compare_digest(x_api_key.encode(), expected.encode()):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="invalid or missing X-API-Key",
