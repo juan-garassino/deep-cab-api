@@ -139,3 +139,43 @@ def test_cors_star_forbidden_in_prod(monkeypatch, fresh_settings) -> None:
 
     with pytest.raises(RuntimeError, match="forbidden when APP_ENV=prod"):
         create_app()
+
+
+# ---- Guardian G-016: fail closed in prod, constant-time compare ----------
+
+
+def test_api_key_guard_fails_closed_in_prod_when_no_keys_set(monkeypatch, fresh_settings) -> None:
+    """APP_ENV=prod with no key configured must NOT expose /train to the internet."""
+    monkeypatch.delenv("DEEPCAB_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("APP_ENV", "prod")
+
+    from deepCab.api.app import create_app
+
+    client = TestClient(create_app())
+    body = {"config": {"backend": {"kind": "xgb"}, "data": {"size": "1k"}, "seed": 1}}
+    r = client.post("/train", json=body)
+    assert r.status_code == 503
+
+
+def test_api_key_guard_uses_constant_time_compare(monkeypatch, fresh_settings) -> None:
+    """The key check must go through hmac.compare_digest (no timing oracle)."""
+    import hmac
+
+    from deepCab.api import deps
+    from deepCab.schemas.settings import get_settings
+
+    monkeypatch.setenv("DEEPCAB_API_KEY", "deepcab-secret")
+    calls: list[tuple] = []
+    real = hmac.compare_digest
+
+    def spy(a, b):
+        calls.append((a, b))
+        return real(a, b)
+
+    monkeypatch.setattr(deps.hmac, "compare_digest", spy, raising=False)
+    deps.api_key_guard(get_settings(), x_api_key="deepcab-secret")
+    assert calls, "api_key_guard did not use hmac.compare_digest"
+    with pytest.raises(deps.HTTPException) as exc:
+        deps.api_key_guard(get_settings(), x_api_key=None)
+    assert exc.value.status_code == 403
